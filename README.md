@@ -1,3 +1,3 @@
-#华为软件精英赛代码备份
+#secesoftwarecup
 
 bot
