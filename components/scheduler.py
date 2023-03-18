@@ -6,56 +6,14 @@ from typing import Any, List
 
 # 2023/3/18 future: 定义q表调用方法
 
-class Event(object):
-    def __init__(self, frame: int, bot_id: int, axis: List[int, int],
-                 vel: float, pal: float, direction: float, target_id: int) -> None:
-        self.frame = frame
-        self.axis = axis
-        self.vel = vel
-        self.pal = pal
-        self.direction = direction
-        self.bot_id = bot_id
+class Task():
+    def __init__(self, target_id: int, action: int) -> None:
+        ''': action: 0 Sell 1 Buy 2 Destory
+        
+        : target_id: -1 ~ target_num - 1
+        '''
         self.target_id = target_id
-        self.q_func = None
-    
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pass
-
-    def action():
-        pass
-
-class AbstractItem(Event):
-    def __init__(self, frame: int, bot_id: int, axis: List[int, int], 
-                 vel: float, pal: float, direction: float, value: float,
-                 target_id: int, item_id: int, time_coef: float, col_coef: float) -> None:
-        super().__init__(frame, bot_id, axis, vel, pal, direction, target_id)
-        self.value = value
-        self.item_id = item_id
-        self.time_coef = time_coef
-        self.col_coef = col_coef
-
-class Sell(AbstractItem):
-    def __init__(self, frame: int, bot_id: int, axis: List[int, int], 
-                 vel: float, pal: float, direction: float, value: float, 
-                 target_id: int, item_id: int, time_coef: float, col_coef: float) -> None:
-        super().__init__(frame, bot_id, axis, vel, pal, direction, value, target_id, item_id, time_coef, col_coef)
-
-    def action(self, status):
-        nw_status = None # 对地图状态建模
-        if self.target_id == -1:
-            return '', status
-        else:
-            command = f'sell {self.bot_id}'
-        return command, nw_status
-
-class Buy(AbstractItem):
-    pass
-
-class Destroy(AbstractItem):
-    pass
-
-class Transport(Event):
-    pass
+        self.action = action
 
 class TaskQueue():
     def __init__(self, length) -> None:
@@ -68,13 +26,12 @@ class TaskQueue():
         return None
 
     def activate(self):
-        command = ''
         if len(self.task_queue):
-            command, status = self.task_queue[0].action()
+            task = self.task_queue[0]
             del self.task_queue[0]
-        return command, status
+        return task
     
-    def add_event(self, event: Event):
+    def add_event(self, event: Task):
         if len(self.task_queue) < self.len:
             self.task_queue.append(event)
     
@@ -99,11 +56,17 @@ class Scheduler():
         '''
         pass
 
+    def finish(self, bot_id):
+        '''机器人完成任务
+        '''
+        self.bot_tasks[bot_id].activate()
+
     def feedback(self):
         '''返回上次 plan 后每个机器人的决策
         '''
         pass
 
+# Q-learning 调度器
 class QTableScheduler(Scheduler):
     def __init__(self, bot_num, metadata, queue_len, file_path: str) -> None:
         super().__init__(bot_num, metadata, queue_len)
@@ -128,6 +91,7 @@ class QTableScheduler(Scheduler):
     def feedback(self):
         pass
 
+# 贪心调度器
 class SimpleScheduler(Scheduler):
     def __init__(self, bot_num, metadata, queue_len) -> None:
         super().__init__(bot_num, metadata, queue_len)
