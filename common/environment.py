@@ -193,4 +193,4 @@ class Env():
 
 if __name__ == '__main__':
     test = Env(4, 9000)
-    print(test._time_cost(1))
+    print(test._time_reward(1))
