@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 
 class fuck():
     def __init__(self) -> None:
@@ -6,4 +7,4 @@ class fuck():
 
 import random
 
-print(''.join([1, 2]))
+print(defaultdict(lambda: [0] * (2 ** 3 + 1))['?'])
