@@ -7,4 +7,8 @@ class fuck():
 
 import random
 
-print(defaultdict(lambda: [0] * (2 ** 3 + 1))['?'])
+print(str([1, 2, 3]))
+
+'''from qtable import QTable
+
+print(len(QTable.q_table))'''

@@ -5,16 +5,21 @@ import random, re
 
 TARGET_CLASS_NUM = 9
 TIME_SPLIT = 10
-BUY_COST = [3000, 4400, 5800, 15400, 17200, 19200, 76000, 10000000, 100000000]
-SELL_REWARD = [6000, 7600, 9200, 22500, 25000, 27500, 10500, -1, -1]
+BUY_COST = [3000, 4400, 5800, 15400, 17200, 19200, 76000]
+SELL_REWARD = [6000, 7600, 9200, 22500, 25000, 27500, 105000]
+TARGET_MAT = [[], [], [], [1, 2], [1, 3], [2, 3], [4, 5, 6], [], []]
 
 # 2023/03/18 future: 更精确的状态定义，到达工作台时间分段计入状态
+
+# 2023/03/19 feature: 加入分数统计
 
 class Env():
     def __init__(self, n, end_frame) -> None:
         self.end_frame = end_frame
         self.frame = 0
         self.n = n
+        self.money = 20000
+        self.static = {'buy': 0, 'sell': 0, 'destroy': 0}
 
         self.bot_carry = 0
         self.close_targets = self._generate_targets()
@@ -75,13 +80,15 @@ class Env():
         elif ttype == 8:
             k = 1
             ret.extend([7])
-        else:
+        elif ttype == 9:
             k = 6
             ret.extend(range(1, 7))
         return sorted(random.sample(ret, random.randint(0, k)))
     
     def draw(self):
-        pass
+        ret = [self.close_targets[i]['type'] for i in range(len(self.close_targets))]
+        text = f'\rstep: {self.frame}, bot_carry: {self.bot_carry}, close_targets: {ret}, money: {self.money}'
+        print(text, end = '')
 
     def get_terminal(self):
         '''结束一轮训练
@@ -113,15 +120,22 @@ class Env():
                 # 销毁转移
                 self.bot_carry = 0
                 self.close_targets = self.next_targets
+                self.static['destroy'] += 1
             elif action % 2 == 1:
                 # 买入转移
                 if self.close_targets[idx]['product'] and self.bot_carry == 0:
                     self.bot_carry = self.close_targets[idx]['type']
+                    self.money -= BUY_COST[self.bot_carry - 1]
+                    self.static['buy'] += 1
                 self.close_targets = self.next_targets
             else:
                 # 卖出转移
-                if self.bot_carry != 0 and self.bot_carry not in self.close_targets[idx]['material']:
+                if self.bot_carry != 0 and \
+                   self.bot_carry not in self.close_targets[idx]['material'] and \
+                   self.bot_carry in TARGET_MAT[self.close_targets[idx]['type'] - 1]:
                     self.bot_carry = 0
+                    self.money += SELL_REWARD[self.bot_carry - 1]
+                    self.static['sell'] += 1
                 self.close_targets = self.next_targets
             self.next_targets = self._generate_targets()
     
@@ -147,17 +161,17 @@ class Env():
                 return -0.2 * np.log(sl + 2) * level
         else:
             # 销毁，使得某个可能容纳该物品的工作台空闲变大
-            return -0.2 * self.bot_carry // 3
+            return -self.bot_carry // 3
         
-    def _buy_reward(self, ss, sc):
+    def _buy_reward(self, ss):
         # 总思想：之后卖出的收益尽可能大
         if ss and self.bot_carry == 0:
-            return 0.5 * (SELL_REWARD[sc - 1] - BUY_COST[sc - 1]) / 1000
+            return 0.2 * (SELL_REWARD[self.bot_carry - 1] - BUY_COST[self.bot_carry - 1]) / 1000
         return 0
     
     def _sell_reward(self, sr, sc):
-        if self.bot_carry not in sr and self.bot_carry != 0:
-            return (SELL_REWARD[sc - 1] - BUY_COST[sc - 1]) / 1000
+        if self.bot_carry not in sr and self.bot_carry != 0 and self.bot_carry in TARGET_MAT[sc - 1]:
+            return (SELL_REWARD[self.bot_carry - 1] - BUY_COST[self.bot_carry - 1]) / 1000
         return 0
 
     def get_target(self, action):
@@ -179,11 +193,11 @@ class Env():
             elif action % 2 == 1:
                 score = self._time_reward(idx) + \
                         self._finish_reward(sc, ss, sl, sr, 2) + \
-                        self._buy_reward(ss, sc)
+                        self._buy_reward(ss)
                 if ss and self.bot_carry == 0:
                     return self._encode_status(sc, self.next_targets), score, done
                 else:
-                    return self._encode_status(self.bot_carry, self.next_targets), score, done
+                    return self._encode_status(self.bot_carry, self.next_targets), score - self._buy_reward(ss), done
             else:
                 score = self._time_reward(idx) + \
                         self._finish_reward(sc, ss, sl, sr, 2) + \
@@ -191,13 +205,15 @@ class Env():
                 if self.bot_carry not in sr and self.bot_carry != 0:
                     return self._encode_status(0, self.next_targets), score, done
                 else:
-                    return self._encode_status(self.bot_carry, self.next_targets), score, done
+                    return self._encode_status(self.bot_carry, self.next_targets), score - self._sell_reward(sr, sc), done
     
     def restart(self):
         self.frame = 0
         self.bot_carry = 0
         self.close_targets = self._generate_targets()
         self.next_targets = self._generate_targets()
+        self.money = 20000
+        self.static = {'buy': 0, 'sell': 0, 'destroy': 0}
 
 if __name__ == '__main__':
     test = Env(4, 9000)

@@ -14,12 +14,14 @@ class AgentQL():
         self.lr = lr
         self.gamma = reward_decay
         self.epsilon = e_greedy
-        self.q_table = defaultdict(lambda: np.array([0] * (2 * n + 1)))
+        self.q_table = defaultdict(lambda: np.array([0] * (2 * n + 1), dtype=np.float32))
 
     def choose_action(self, observation):
+        '''在当前状态下选择一个动作执行
+        '''
         action_list = self.q_table[observation]
         if np.random.uniform() < np.max(action_list):
-            index = action_list == np.max(action_list)
+            index = np.where(action_list - np.max(action_list) < 1e-2, 1, 0)
             ret = list(filter(lambda x : x != 0, [self.actions[i] if x != 0 else 0 for i, x in enumerate(index)]))
             action = np.random.choice(ret)
         else:
@@ -27,6 +29,8 @@ class AgentQL():
         return action
 
     def learn(self, ob_now, action, score, ob_af, done):
+        '''更新 Q 表
+        '''
         q_predict = self.q_table[ob_now][self.actions.index(action)]
         if done:
             q_target = score
