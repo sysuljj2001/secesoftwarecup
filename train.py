@@ -3,7 +3,7 @@ from common.utils import Saver
 from components.ql import AgentQL
 import time
 
-n = 2
+n = 5
 end_frame = 100000
 TIMES = 3000 # 训练轮数
 SAVE_INTERVAL = 100
