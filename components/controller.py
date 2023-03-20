@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree #浮点数路线存储数据结构
 from celluloid import Camera #动图输出
+from typing import List
 
 class RVO_Contorller():
     def __init__(self) -> None:
@@ -127,7 +128,28 @@ def closepoint(bot_loc,path):
 PID = Pid_loc(1.3, 0.0215, 27.5, point=0, up=np.pi / 6, down=-np.pi / 6)
 
 class PID_Controller():
-    def __init__(self) -> None:
+    def __init__(self, bot_info: dict, paths: List, kp, ki, kd) -> None:
+        '''PID 控制器，输入一帧机器人位姿状态和当前帧行走路径集合，输出期望的线速度和角速度
+        :param bot_info: 从地图数据中获取的机器人位姿
+        :param paths: 机器人行走路径集合（有序点集）
+        '''
+        self.bot_info = bot_info
+        self.paths = paths
+        self.pid = Pid_loc(1.3, 0.0215, 27.5, point=0, up=np.pi / 6, down=-np.pi / 6)
+    
+    def update_paths(self, paths):
+        '''更新移动路径
+        '''
+        self.paths = paths
+
+    def update_bot(self, bot_info: dict):
+        '''更新机器人位姿状态
+        '''
+        self.bot_info = bot_info
+
+    def handle(self):
+        '''获取该机器人前往 dest 在当前帧所需的 forwad 和 rotate
+        '''
         pass
 
 def main():
