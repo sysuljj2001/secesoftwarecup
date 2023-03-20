@@ -116,16 +116,16 @@ def closepoint(bot_loc,path):
     minpoint=np.argmin(dists)
     return minpoint
 
-PID = Pid_loc(1.3, 0.0215, 27.5, point=0, up=np.pi / 3, down=-np.pi / 3)
+PID = Pid_loc(1.3, 0.0215, 27.5, point=0, up=np.pi / 6, down=-np.pi / 6)
 
 def main():
     # 主函数
-    path = np.zeros((1000, 2))
-    path[:, 0] = np.linspace(0, 100, 1000)  # 后续需考虑路径动态添加
-    path[:, 1] = 2 * np.sin(path[:, 0] / 3.0)  # sin轨迹
+    path = np.zeros((500, 2))
+    path[:, 0] = np.linspace(0, 50, 500) # 后续需考虑路径动态添加
+    path[:, 1] = 2 * np.sin(path[:, 0] / 3.0)+path[:,0]# sin轨迹
     findtree = KDTree(path)
 
-    bot = model2control(0 ,0 , 6, 1, 0.5, 0.1)  # 机器人x坐标，机器人y坐标,机器人航行速度，机器人前后轴，机器人偏向弧度，刻长
+    bot = model2control(0, -1, 6 , 2, 0.5, 0.05)  # 机器人x坐标，机器人y坐标,机器人航行速度，机器人前后轴，机器人偏向弧度，刻长
     x_ = []
     y_ = []
     gif = plt.figure(1)
@@ -133,9 +133,10 @@ def main():
 
     for i in range(550):
         loc = np.zeros(2)
-        loc[0] = bot.x#最近点数据
+        loc[0] = bot.x
         loc[1] = bot.y
         dis, inc = findtree.query(loc)
+
 
         alpha = math.atan2(path[inc, 1] - loc[1], path[inc, 0] - loc[0])
         long2see = np.linalg.norm(path[inc] - loc)
