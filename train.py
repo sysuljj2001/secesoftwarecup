@@ -3,19 +3,22 @@ from common.utils import Saver
 from components.ql import AgentQL
 import time
 
-n = 5
-end_frame = 100000
+n = 2
+end_frame = 1000000
 TIMES = 3000 # 训练轮数
-SAVE_INTERVAL = 100
+SAVE_INTERVAL = 10
 
 agent = AgentQL(n)
 env = Env(n, end_frame)
 saver = Saver(path='./qtable.py')
 for epoch in range(TIMES):
     state = env.get_observation()
+    step = 0
     while(True):
+        step += 1
         done = env.get_terminal()
-        env.draw()
+        if step % 10000 == 0:
+            env.draw()
         #time.sleep(0.2)
         if done:
             print(f'\n第{epoch + 1}次迭代，最终分数{env.money}，q 表大小 {len(agent.q_table)}，统计信息{env.static}')

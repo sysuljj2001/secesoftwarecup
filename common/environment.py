@@ -4,7 +4,7 @@ from typing import List
 import random, re
 
 TARGET_CLASS_NUM = 9
-TIME_SPLIT = 10
+TIME_SPLIT = 5
 BUY_COST = [3000, 4400, 5800, 15400, 17200, 19200, 76000]
 SELL_REWARD = [6000, 7600, 9200, 22500, 25000, 27500, 105000]
 TARGET_MAT = [[], [], [], [1, 2], [1, 3], [2, 3], [4, 5, 6], [], []]

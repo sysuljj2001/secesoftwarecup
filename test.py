@@ -9,6 +9,6 @@ import random
 
 print(str([1, 2, 3]))
 
-'''from qtable import QTable
+from qtable import QTable
 
-print(len(QTable.q_table))'''
+print(len(QTable.q_table))
