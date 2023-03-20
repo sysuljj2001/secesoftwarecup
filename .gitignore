@@ -129,3 +129,10 @@ dmypy.json
 .pyre/
 
 qtable.py
+Img/
+maps/
+replay/
+replayer/
+Robot_gui.exe
+Robot.exe
+freeglut.dll

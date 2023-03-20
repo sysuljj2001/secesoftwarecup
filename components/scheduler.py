@@ -1,3 +1,7 @@
+'''
+调度器（Scheduler）模块：全局策略模块，用于调度多智能体的行为，最大化全局利益
+'''
+
 import numpy as np
 import random
 from typing import Any, List
