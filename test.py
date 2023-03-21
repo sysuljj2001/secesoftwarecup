@@ -74,7 +74,7 @@ class Robot:
         return linear_velocity,angular_velocity
 
 class PID_Controller():
-    def __init__(self, bot_info: dict, paths: List, kp, ki, kd) -> None:
+    def __init__(self, bot_info: dict, paths) -> None:
         '''PID 控制器，输入一帧机器人位姿状态和当前帧行走路径集合，输出期望的线速度和角速度
         :param bot_info: 从地图数据中获取的机器人位姿
         :param paths: 机器人行走路径集合（有序点集）
@@ -82,7 +82,7 @@ class PID_Controller():
         self.bot_info = bot_info
         self.paths = paths
         #self.pid = PidController(
-        self.robot = Robot(self.bot_info['x'],self.bot_info['y'],self.bot_info['p'],self.bots['tv'],self.bot_info['w'],self.paths)
+        self.robot = Robot(self.bot_info['coord'][0],self.bot_info['coord'][1],self.bot_info['p'],1,self.bot_info['w'],self.paths)
         #调用robot类，经由pid控制，通过update()函数得到控制指令
     def update_paths(self, paths):
         '''更新移动路径
