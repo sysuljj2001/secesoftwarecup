@@ -5,6 +5,8 @@
 import numpy as np
 import sys
 
+MAP_SIZE = 50
+
 def get_coord(map_x: int, map_y: int):
     '''根据地图字符矩阵获取坐标
     '''
@@ -66,6 +68,12 @@ class DataLoader():
                             'prod_status': 0,
                         })
                     self.table_num += 1
+                    
+        # 加入地图边界（虽然不知道有没有用）
+        [(self.obstacles.append((0, i / 2)), 
+         self.obstacles.append((i / 2, 0)), 
+         self.obstacles.append((MAP_SIZE, i / 2)), 
+         self.obstacles.append((i / 2, MAP_SIZE))) for i in range(0, MAP_SIZE << 1)]
 
     def read(self, first_line: str):
         '''读取帧数据

@@ -2,6 +2,7 @@ import math
 import time
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import List
 min_set = 10
 show_animation = True  # 绘图
 
@@ -105,7 +106,9 @@ class Dijkstra:
 
         # 找到终点
         rx, ry = self.calc_final_path(goal_node, closed_set)
-        return rx, ry
+        res = list(zip(rx, ry))
+        res.reverse()
+        return res
 
     # ------------------------------ #
     # A* 的启发函数
@@ -242,15 +245,18 @@ def main():
     dijkstra = Dijkstra(ox, oy, grid_size, robot_radius)
     # 求解路径，返回路径的 x 坐标和 y 坐标列表
     t1=time.time()
-    rx, ry = dijkstra.planning(sx, sy, gx, gy)#需实际校对
-    print(rx, ry)#绘图模块删掉后决策离散路线在10ms左右
-    rx, ry = dijkstra.planning(70, 70, 40, 50)
-    print(rx, ry)
-    rx, ry = dijkstra.planning(40, 50, 10, 90)
-    print(rx, ry)
-    rx, ry = dijkstra.planning(10, 90, np.around(86.6),np.around(45.3))
-    print(rx, ry)
-    t2=time.time()
-    print(t2-t1)
+    finder = Dijkstra([0, 50], [0, 50], 0.25, 0.45)
+    paths = finder.planning(3, 3, 1, 1)
+    print(paths)
+    #res = dijkstra.planning(sx, sy, gx, gy)#需实际校对
+    #print(res)#绘图模块删掉后决策离散路线在10ms左右
+    #rx, ry = dijkstra.planning(70, 70, 40, 50)
+    #print(rx, ry)
+    #rx, ry = dijkstra.planning(40, 50, 10, 90)
+    #print(rx, ry)
+    #rx, ry = dijkstra.planning(10, 90, np.around(86.6),np.around(45.3))
+    #print(rx, ry)
+    #t2=time.time()
+    #print(t2-t1)
 if __name__ == '__main__':
     main()

@@ -2,8 +2,7 @@
 import sys
 from components import A_star, scheduler
 from components.preprocess import DataLoader
-from components.test import PID_Controller
-from components.test import Robot
+from components.controller import PID_Controller
 
 def read_util_ok():
     while input() != "OK":
@@ -19,6 +18,9 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
+    pid_controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
+    finder = A_star.Dijkstra([0, 50], [0, 50], 2, 0.45)
+    paths = []
     while True:
         # 读入一帧数据
         line = sys.stdin.readline()
@@ -28,19 +30,19 @@ if __name__ == '__main__':
         
         # 决策、控制
         bot_infos = dataloader.bots
-        # 2023/03/20 feature: 完成一个机器人的 PID 控制
-        #for i in range(4)作各机器人判断
-        needpath = A_find([bot_infos[0]['coord'][0],bot_infos[0]['coord'][0]],[0,0])#假设点0,0，得出离散路径
-        pid_controller = PID_Controller(bot_info=bot_infos[0], paths=needpath) #调用机器人控制类
-        c1_1,c1_2 = pid_controller.handle()#当前帧所需控制指令
-        sys.stdout.write('%d\n' % (dataloader.frame_id))
-        sys.stdout.write('forward %d %d\n' % (0,c1_1))
-        sys.stdout.write('rotate %d %f\n' % (0,c1_2))
-        finish()
-        '''
-        line_speed, angle_speed = 3, 1.5
-        for robot_id in range(4):
-            sys.stdout.write('forward %d %d\n' % (robot_id, line_speed))
-            sys.stdout.write('rotate %d %f\n' % (robot_id, angle_speed))
-        '''
+        # 2023/03/22 feature: 完成一个机器人的 PID 控制
+        # 2023/03/22 future: 重构代码
+
+        # 以下操作统统在调度器中完成
+        for i in range(4):
+            if dataloader.frame_id % 100 == 1:
+                paths = finder.planning(bot_infos[i]['coord'][0], bot_infos[i]['coord'][1], 49, 1)
+                pid_controller[i].refresh()
+            pid_controller[i].update_bot(bot_infos[i])
+            pid_controller[i].update_paths(paths[1::5])
+            if len(paths) > 5: paths = paths[1:]
+            res = pid_controller[i].handle(0.1)#当前帧所需控制指令
+            if res is None: continue
+            sys.stdout.write('forward %d %d\n' % (i,res[0]))
+            sys.stdout.write('rotate %d %f\n' % (i,res[1]))
         finish()
