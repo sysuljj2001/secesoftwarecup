@@ -67,7 +67,7 @@ class PID_Controller():
         angle_to_goal = math.atan2(dy, dx)
         return angle_to_goal - self.bot_info['p']
     
-    def update_paths(self, paths):
+    def update_path(self, paths):
         '''更新移动路径
         '''
         self.paths = paths
