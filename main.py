@@ -23,10 +23,9 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
-    pid_controller = [PID_Controller(kp=4, ki=0.01, kd=0.01) for _ in range(4)] #调用机器人控制类
+    pid_controller = [PID_Controller(kp=4, ki=0.0007, kd=0.00005) for _ in range(4)] #调用机器人控制类
     finder = A_star.Dijkstra([0, 50], [0, 50], 0.25, 0.45, np.deg2rad(30))
     scheduler = Scheduler(4, None, 5, finder=finder)
-    paths = []
     while True:
         # 读入一帧数据
         line = sys.stdin.readline()
@@ -42,26 +41,27 @@ if __name__ == '__main__':
         if dataloader.frame_id == 1:
             scheduler.glob_plan(dataloader)
             [x.refresh() for x in pid_controller]
+            logging.info(scheduler.bot_tasks[0].get_event().path)
 
         # 以下操作统统在调度器中完成
         for i in range(1):
-            #if dataloader.frame_id % 1000 == 1:
-            #    scheduler.glob_plan(dataloader)
-            #    [x.refresh() for x in pid_controller]
-
+            if dataloader.frame_id % 1000 == 1:
+                scheduler.glob_plan(dataloader)
+                [x.refresh() for x in pid_controller]
             if scheduler.check_finish(i, dataloader) or dataloader.frame_id == 1:
-                pid_controller[i].refresh()
+                #pid_controller[i].refresh()
                 scheduler.plan(i, dataloader)
                 event = scheduler.bot_tasks[i].get_event()
                 path, last_pt = event.path, event.path[-1]
-                paths = path[3::3]
+                paths = []
                 paths.append(last_pt)
+                logging.info(paths)
                 pid_controller[i].update_path(paths)
                 s = dataloader.tables[event.target_id]['coord']
                 logging.info(f'botid: {i}, targetid: {event.target_id}, targetpos: {s}')
             
             pid_controller[i].update_bot(bot_infos[i])
-            res = pid_controller[i].handle(0.015)#当前帧所需控制指令
+            res = pid_controller[i].handle(0.1)#当前帧所需控制指令
             if res is None: 
                 pid_controller[i].refresh()
                 scheduler.plan(i, dataloader)

@@ -129,7 +129,7 @@ class Dijkstra:
     # ------------------------------ #
     @staticmethod
     def calc_heuristic(n1, n2):  # n1终点，n2当前网格
-        w = [0.99, 0.01]  # 单个启发函数的权重，如果有多个启发函数，权重可以设置的不一样
+        w = [1.5, 0.001]  # 单个启发函数的权重，如果有多个启发函数，权重可以设置的不一样
         d = w[0] * math.hypot(n1.x - n2.x, n1.y - n2.y)  # 当前网格和终点距离
         _gx, _gy = n1.rx - n2.rx, n1.ry - n2.ry
         if n1.x - n2.x == 0:
@@ -239,10 +239,10 @@ class Dijkstra:
 
 def main():
     # 设置起点和终点
-    sx = 10.0
-    sy = 20.0
-    gx = 30
-    gy = 10
+    sx = 25
+    sy = 38.5
+    gx = 22.5
+    gy = 1.25
     # 网格大小
     grid_size = 0.5
     # 机器人半径
@@ -268,8 +268,8 @@ def main():
     #dijkstra = Dijkstra(ox, oy, grid_size, robot_radius)
     # 求解路径，返回路径的 x 坐标和 y 坐标列表
     #t1=time.time()
-    finder = Dijkstra([0, 50], [0, 50], grid_size, robot_radius, np.deg2rad(10))
-    paths = finder.planning(sx, sy, np.deg2rad(-180), gx, gy)
+    finder = Dijkstra([0, 50], [0, 50], grid_size, robot_radius, np.deg2rad(30))
+    paths = finder.planning(sx, sy, np.deg2rad(0), gx, gy)
     print(paths)
     #res = dijkstra.planning(sx, sy, gx, gy)#需实际校对
     #print(res)#绘图模块删掉后决策离散路线在10ms左右
