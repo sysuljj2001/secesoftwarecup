@@ -4,9 +4,6 @@
 
 import math
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.spatial import KDTree #浮点数路线存储数据结构
-from celluloid import Camera #动图输出
 from typing import List
 
 class RVO_Contorller():

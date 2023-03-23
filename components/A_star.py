@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
 min_set = 10
-show_animation = True  # 绘图
+show_animation = False  # 绘图
 
 # 创建一个类
 class Dijkstra:
@@ -26,53 +26,69 @@ class Dijkstra:
 
     # 构建节点，每个网格代表一个节点
     class Node:
-        def __init__(self, x, y, cost, parent_index):
+        def __init__(self, x, y, cost, parent_index, table_id: int = None):
             self.x = x  # 网格索引
             self.y = y
             self.cost = cost  # 路径值
             self.parent_index = parent_index  #网格父节点
+            self.table_id = table_id
 
         def __str__(self):
             return str(self.x) + ',' + str(self.y) + ',' + str(self.cost) + ',' + str(self.parent_index)
 
     # 寻找最优路径，网格起始坐标(sx,sy)，终点坐标（gx,gy）
-    def planning(self, sx, sy, gx, gy):
+    def planning(self, sx, sy, gx, gy, table_id = None):
         # 节点初始化
         # 将已知的起点和终点坐标形式转化为节点类型，0代表路径权重，-1代表无父节点
         start_node = self.Node(self.calc_xy_index(sx, self.min_x),
                                self.calc_xy_index(sy, self.min_y), 0.0, -1)
         # 终点
-        goal_node = self.Node(self.calc_xy_index(gx, self.min_x),
-                              self.calc_xy_index(gy, self.min_y), 0.0, -1)
+        if type(gx) == list:
+            goal_node = [self.Node(self.calc_xy_index(x, self.min_x), 
+                                   self.calc_xy_index(y, self.min_y), 0.0, -1, table_id[i]) for i, (x, y) in enumerate(zip(gx, gy))]
+        else:
+            goal_node = self.Node(self.calc_xy_index(gx, self.min_x),
+                                  self.calc_xy_index(gy, self.min_y), 0.0, -1, table_id)
         # 保存入库节点和待计算节点
         open_set, closed_set = dict(), dict()
         # 先将起点入库，获取每个网格对应的key
         open_set[self.calc_index(start_node)] = start_node
+        ent_times = 0
 
         # 循环
         while 1:
             # 选择扩展点，添加了启发项，f(n)= g(n) + h(n)
             c_id = min(open_set,
                        key=lambda o: open_set[o].cost + \
-                                     self.calc_heuristic(goal_node, open_set[o]))
+                                     self.calc_heuristic(goal_node[ent_times], open_set[o]))
 
             current = open_set[c_id]  # 从字典中取出该节点
 
             # 绘图
-            """
+            """"""
             if show_animation:
                 # 网格索引转换为真实坐标
                 plt.plot(self.calc_position(current.x, self.min_x),
                          self.calc_position(current.y, self.min_y), 'xc')
                 plt.pause(0.0001)
-            """
+            
             # 判断是否是终点，如果选出来的损失最小的点是终点
-            if current.x == goal_node.x and current.y == goal_node.y:
+            if type(gx) != list:
+                if current.x == goal_node.x and current.y == goal_node.y:
                 # 更新终点的父节点
-                goal_node.cost = current.cost
+                    goal_node.cost = current.cost
                 # 更新终点的损失
-                goal_node.parent_index = current.parent_index
-                break
+                    goal_node.parent_index = current.parent_index
+                    break
+            else:
+                for i, goal in enumerate(goal_node):
+                    if goal.x == current.x and goal.y == current.y:
+                        ent_times += 1
+                        goal_node[i].cost = current.cost
+                        goal_node[i].parent_index = current.parent_index
+                        break
+                if ent_times >= len(goal_node):
+                    break
 
             # 在外库中删除该最小损失点，把它入库
             del open_set[c_id]
@@ -105,9 +121,17 @@ class Dijkstra:
                         open_set[n_id] = node
 
         # 找到终点
-        rx, ry = self.calc_final_path(goal_node, closed_set)
-        res = list(zip(rx, ry))
-        res.reverse()
+        if type(gx) == list:
+            res = []
+            for goal in goal_node:
+                rx, ry = self.calc_final_path(goal, closed_set)
+                ret = list(zip(rx, ry))
+                ret.reverse()
+                res.append({'path': ret, 'table_id': goal.table_id})
+        else:
+            rx, ry = self.calc_final_path(goal_node, closed_set)
+            res = list(zip(rx, ry))
+            res.reverse()
         return res
 
     # ------------------------------ #
@@ -218,8 +242,8 @@ def main():
     # 设置起点和终点
     sx = 10.0
     sy = 30.0
-    gx = 70.0
-    gy = 70.0
+    gx = [2.0, 20, 25, 9]
+    gy = [4.0, 30, 31, 15]
     # 网格大小
     grid_size = 0.5
     # 机器人半径
@@ -236,7 +260,7 @@ def main():
 
     # 绘图
     if show_animation:
-        plt.plot(ox, oy, '.k')  # 障碍物黑色
+        plt.plot(gx, gy, '.k')  # 障碍物黑色
         plt.plot(sx, sy, 'og')  # 起点绿色
         plt.grid(True)
         plt.axis('equal')  # 坐标轴刻度间距等长
@@ -245,8 +269,8 @@ def main():
     dijkstra = Dijkstra(ox, oy, grid_size, robot_radius)
     # 求解路径，返回路径的 x 坐标和 y 坐标列表
     t1=time.time()
-    finder = Dijkstra([0, 50], [0, 50], 0.25, 0.45)
-    paths = finder.planning(3, 3, 1, 1)
+    finder = Dijkstra([0, 50], [0, 50], 1, 0.45)
+    paths = finder.planning(sx, sy, gx, gy, [1, 2, 3, 4])
     print(paths)
     #res = dijkstra.planning(sx, sy, gx, gy)#需实际校对
     #print(res)#绘图模块删掉后决策离散路线在10ms左右
