@@ -239,8 +239,6 @@ class SimpleScheduler(Scheduler):
         if bot['at_id'] == table['id']:
             if action == 'buy' and table['prod_status'] == 1 and bot['item_type'] == 0:
                 return True
-            if action == 'sell' and bot['item_type'] == 0:
-                return False
             if action == 'sell' and bot['item_type'] not in table['mat_status'] and bot['item_type'] in TARGET_MAT[table_type - 1] and bot['item_type'] != 0:
                 return True
             #self.bot_tasks[bot_id].activate()

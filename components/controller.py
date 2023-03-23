@@ -86,7 +86,7 @@ class PID_Controller():
         distance_to_goal = self.distance_to_goal()
         angle_to_goal = self.angle_to_goal()
 
-        if distance_to_goal < 0.3:
+        if distance_to_goal < 0.34:
             self.current_path_index += 1
             if self.current_path_index >= len(self.paths):
                 return None

@@ -24,8 +24,10 @@ if __name__ == '__main__':
     dataloader.init()
     finish()
     pid_controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
-    finder = A_star.Dijkstra([0, 50], [0, 50], 1.75, 0.45)
+    finder = A_star.Dijkstra([0, 50], [0, 50], 1, 0.45)
     scheduler = SimpleScheduler(4, None, 2, finder=finder)
+    # 机器人状态，1 执行动作 2 进行决策 3 移动
+    bot_status = [3] * 4
     while True:
         # 读入一帧数据
         line = sys.stdin.readline()
@@ -43,16 +45,18 @@ if __name__ == '__main__':
             [x.refresh() for x in pid_controller]
 
         # 以下操作统统在调度器中完成
-        for i in range(3):
+        for i in range(4):
             #if dataloader.frame_id % 1000 == 1:
             #    scheduler.glob_plan(dataloader)
             #    [x.refresh() for x in pid_controller]
             res = scheduler.check_finish(i, dataloader)
-            if res is not None or dataloader.frame_id == 1:
+            if res and bot_status[i] == 3:
+                bot_status[i] = 1
                 # 执行任务
-                if res is not None:
-                    task = scheduler.bot_tasks[i].activate()
-                    sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))
+                task = scheduler.bot_tasks[i].activate()
+                sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))
+            elif bot_status[i] == 1:
+                bot_status[i] = 2
                 pid_controller[i].refresh()
                 scheduler.plan(i, dataloader)
                 event = scheduler.bot_tasks[i].get_event()
@@ -60,15 +64,18 @@ if __name__ == '__main__':
                 pid_controller[i].update_path(path)
                 s = dataloader.tables[event.target_id]['coord']
                 logging.info(f'botid: {i}, targetid: {event.target_id}, targetpos: {s}')
-            
-            pid_controller[i].update_bot(bot_infos[i])
-            res = pid_controller[i].handle(0.015)#当前帧所需控制指令
-            if res is None: 
-                pid_controller[i].refresh()
-                scheduler.plan(i, dataloader)
-                continue
-            sys.stdout.write('forward %d %d\n' % (i,res[0]))
-            sys.stdout.write('rotate %d %f\n' % (i,res[1]))
+            elif bot_status[i] == 2 or bot_status[i] == 3:
+                bot_status[i] = 3
+                event = scheduler.bot_tasks[i].get_event()
+                path = [event.path[-1]]
+                pid_controller[i].update_path(path)
+                pid_controller[i].update_bot(bot_infos[i])
+                res = pid_controller[i].handle(0.015)#当前帧所需控制指令
+                if res is None: 
+                    pid_controller[i].refresh()
+                    continue
+                sys.stdout.write('forward %d %d\n' % (i,res[0]))
+                sys.stdout.write('rotate %d %f\n' % (i,res[1]))
         finish()
 
 
