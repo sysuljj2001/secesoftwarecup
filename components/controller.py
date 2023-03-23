@@ -86,7 +86,7 @@ class PID_Controller():
         distance_to_goal = self.distance_to_goal()
         angle_to_goal = self.angle_to_goal()
 
-        if distance_to_goal < 0.5:
+        if distance_to_goal < 0.3:
             self.current_path_index += 1
             if self.current_path_index >= len(self.paths):
                 return None
@@ -101,7 +101,7 @@ class PID_Controller():
         ''''''
         if np.abs(angle_to_goal) >= np.pi / 2:
             angular_velocity = 3
-            linear_velocity = 1
+            linear_velocity = 0.5
         elif angle_to_goal > np.pi/3 :
             angular_velocity *= 1.5
             linear_velocity = 1

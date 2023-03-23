@@ -58,9 +58,14 @@ class Dijkstra:
         # 循环
         while 1:
             # 选择扩展点，添加了启发项，f(n)= g(n) + h(n)
-            c_id = min(open_set,
-                       key=lambda o: open_set[o].cost + \
+            if type(gx) == list:
+                c_id = min(open_set,
+                           key=lambda o: open_set[o].cost + \
                                      self.calc_heuristic(goal_node[ent_times], open_set[o]))
+            else:
+                c_id = min(open_set,
+                           key=lambda o: open_set[o].cost + \
+                                     self.calc_heuristic(goal_node, open_set[o]))
 
             current = open_set[c_id]  # 从字典中取出该节点
 

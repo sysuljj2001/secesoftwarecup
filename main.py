@@ -1,7 +1,7 @@
 #!/bin/bash
 import sys
 from components import A_star
-from components.scheduler import Scheduler
+from components.scheduler import Scheduler, SimpleScheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller
 import logging
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     dataloader.init()
     finish()
     pid_controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
-    finder = A_star.Dijkstra([0, 50], [0, 50], 0.25, 0.45)
-    scheduler = Scheduler(4, None, 5, finder=finder)
+    finder = A_star.Dijkstra([0, 50], [0, 50], 1.75, 0.45)
+    scheduler = SimpleScheduler(4, None, 2, finder=finder)
     while True:
         # 读入一帧数据
         line = sys.stdin.readline()
@@ -41,22 +41,23 @@ if __name__ == '__main__':
         if dataloader.frame_id == 1:
             scheduler.glob_plan(dataloader)
             [x.refresh() for x in pid_controller]
-            logging.info(scheduler.bot_tasks[0].get_event().path)
 
         # 以下操作统统在调度器中完成
-        for i in range(4):
-            if dataloader.frame_id % 1000 == 1:
-                scheduler.glob_plan(dataloader)
-                [x.refresh() for x in pid_controller]
-            if scheduler.check_finish(i, dataloader) or dataloader.frame_id == 1:
+        for i in range(3):
+            #if dataloader.frame_id % 1000 == 1:
+            #    scheduler.glob_plan(dataloader)
+            #    [x.refresh() for x in pid_controller]
+            res = scheduler.check_finish(i, dataloader)
+            if res is not None or dataloader.frame_id == 1:
+                # 执行任务
+                if res is not None:
+                    task = scheduler.bot_tasks[i].activate()
+                    sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))
                 pid_controller[i].refresh()
                 scheduler.plan(i, dataloader)
                 event = scheduler.bot_tasks[i].get_event()
-                path, last_pt = event.path, event.path[-1]
-                paths = []
-                paths.append(last_pt)
-                logging.info(paths)
-                pid_controller[i].update_path(paths)
+                path = [event.path[-1]]
+                pid_controller[i].update_path(path)
                 s = dataloader.tables[event.target_id]['coord']
                 logging.info(f'botid: {i}, targetid: {event.target_id}, targetpos: {s}')
             

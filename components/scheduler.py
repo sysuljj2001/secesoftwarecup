@@ -6,6 +6,9 @@ import numpy as np
 import random
 from typing import Any, List
 from components.preprocess import DataLoader
+import logging
+
+TARGET_MAT = [[], [], [], [1, 2], [1, 3], [2, 3], [4, 5, 6], [], []]
 
 # 2023/3/17 future: 定义一系列价值函数
 
@@ -38,6 +41,7 @@ class TaskQueue():
         return None
 
     def activate(self):
+        task = None
         if len(self.task_queue):
             task = self.task_queue[0]
             del self.task_queue[0]
@@ -164,13 +168,89 @@ class QTableScheduler(Scheduler):
 
 # 贪心调度器
 class SimpleScheduler(Scheduler):
-    def __init__(self, bot_num, metadata, queue_len, engine, finder) -> None:
+    def __init__(self, bot_num, metadata, queue_len, engine = None, finder = None) -> None:
         super().__init__(bot_num, metadata, queue_len, engine, finder)
     
-    def plan(self, map_status):
-        '''简单贪心策略：找最近的
+    def plan(self, bot_id: int, map_status: DataLoader):
+        '''简单贪心策略：找最近的收益最大的工作台执行动作，收益评判标准如下
+        首先维护一个决策集合表示当前所有可执行的动作，包含如下内容
+        （1）目标工作台可以买入不能卖出，且机器人未携带物品：
+        （2）目标工作台可以买入不能卖出，且机器人携带物品：
+        （3）不可买可卖。。。
+        共8种，收益评判原则：没带物品优先去最近的买，带了物品优先去最近的卖
         '''
-        pass
+        # 计算机器人到所有工作台的最短路
+        bot = map_status.bots[bot_id]
+        tables = map_status.tables
+        gx, gy, table_id = [], [], []
+        for table in tables:
+            gx.append(table['coord'][0])
+            gy.append(table['coord'][1])
+            table_id.append(table['id'])
+        ret = self.finder.planning(bot['coord'][0], bot['coord'][1], gx, gy, table_id)
+        # 按路径长度排序
+        ret = sorted(ret, key=lambda x : len(x['path']))
+        # 带了物品
+        if bot['item_type'] != 0:
+            flag = False
+            for pair in ret:
+                path, table_id = pair['path'], pair['table_id']
+                if bot['at_id'] == table_id: continue
+                table_type = tables[table_id]['table_type']
+                # 最近可卖
+                if bot['item_type'] not in tables[table_id]['mat_status'] \
+                   and bot['item_type'] in TARGET_MAT[table_type - 1] and bot['item_type'] != 0:
+                    event = Task(path, 0, table_id)
+                    self.bot_tasks[bot_id].add_event(event)
+                    flag = True
+                    # 卖了直接买
+                    if tables[table_id]['prod_status'] == 1:
+                        event = Task([tables[table_id]['coord']], 1, table_id)
+                        self.bot_tasks[bot_id].add_event(event)
+                    break
+            if not flag:
+                # 买不到
+                event = Task([bot['coord']], 2, table_id)
+                self.bot_tasks[bot_id].add_event(event)
+        # 没带物品
+        else:
+            flag = False
+            for pair in ret:
+                path, table_id = pair['path'], pair['table_id']
+                if bot['at_id'] == table_id: continue
+                if tables[table_id]['prod_status'] == 1 and bot['item_type'] == 0:
+                    event = Task(path, 1, table_id)
+                    self.bot_tasks[bot_id].add_event(event)
+                    flag = True
+                    break
+            if flag == False:
+                event = Task(ret[1]['path'], 1, ret[1]['table_id'])
+                self.bot_tasks[bot_id].add_event(event)
+    
+    def check_finish(self, bot_id, map_status: DataLoader):
+        event = self.bot_tasks[bot_id].get_event()
+        if event is None: return False
+        action = event.action_list[str(event.action)]
+
+        table = map_status.tables[event.target_id]
+        bot = map_status.bots[bot_id]
+        table_type = table['table_type']
+        # 到达任务点，检查任务是否可用
+        if bot['at_id'] == table['id']:
+            if action == 'buy' and table['prod_status'] == 1 and bot['item_type'] == 0:
+                return True
+            if action == 'sell' and bot['item_type'] == 0:
+                return False
+            if action == 'sell' and bot['item_type'] not in table['mat_status'] and bot['item_type'] in TARGET_MAT[table_type - 1] and bot['item_type'] != 0:
+                return True
+            #self.bot_tasks[bot_id].activate()
+            return False
+        else:
+            return False
+
+    def glob_plan(self, map_status: DataLoader):
+        for bot_id in range(len(map_status.bots)):
+            self.plan(bot_id, map_status)
 
     def feedback(self, map_status):
         pass
