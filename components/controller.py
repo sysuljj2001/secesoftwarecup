@@ -102,12 +102,15 @@ class PID_Controller():
         elif angular_velocity < -3:angular_velocity = -3
 
         ''''''
-        if angle_to_goal > np.pi/3 :
-            #angular_velocity /= 3
-            linear_velocity = 0.5
+        if np.abs(angle_to_goal) >= np.pi / 2:
+            angular_velocity = 3
+            linear_velocity = 1
+        elif angle_to_goal > np.pi/3 :
+            angular_velocity *= 1.5
+            linear_velocity = 1
         elif angle_to_goal < -np.pi/3 :
-            #angular_velocity /= 3
-            linear_velocity = 0.5
+            angular_velocity *= 1.5
+            linear_velocity = -1
 
         return linear_velocity, angular_velocity
 
