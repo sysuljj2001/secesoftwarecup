@@ -71,11 +71,12 @@ class Scheduler():
 
     def plan(self, bot_id, map_status: DataLoader):
         bot_x, bot_y = map_status.bots[bot_id]['coord']
+        ang = map_status.bots[bot_id]['p']
         while True:
             ret = random.sample(map_status.tables, 1)[0]
             table_x, table_y = ret['coord']
             if np.sqrt((table_x - bot_x) ** 2 + (table_y - bot_y) ** 2) > 10:
-                path = self.finder.planning(bot_x, bot_y, table_x, table_y)[1:]
+                path = self.finder.planning(bot_x, bot_y, ang, table_x, table_y)[1:]
                 event = Task(path, 2, ret['id'])
                 self.bot_tasks[bot_id].add_event(event)
                 break
@@ -107,8 +108,9 @@ class Scheduler():
             while True:
                 ret = random.sample(map_status.tables, 1)[0]
                 table_x, table_y = ret['coord']
+                ang = map_status.bots[bot_id]['p']
                 if np.sqrt((table_x - bot_x) ** 2 + (table_y - bot_y) ** 2) > 10:
-                    path = self.finder.planning(bot_x, bot_y, table_x, table_y)[1:]
+                    path = self.finder.planning(bot_x, bot_y, ang, table_x, table_y)[1:]
                     event = Task(path, 2, ret['id'])
                     self.bot_tasks[bot_id].add_event(event)
                     break

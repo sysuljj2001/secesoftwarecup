@@ -4,13 +4,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
 min_set = 10
-show_animation = True  # 绘图
+show_animation = False  # 绘图
 
 # 创建一个类
 class Dijkstra:
     # 初始化
-    def __init__(self, ox, oy, resolution, robot_radius):
-        # 属性分配
+    def __init__(self, ox, oy, resolution, robot_radius, ang_step):
+        '''A* 寻路器
+        :param ox, oy: 障碍物 x, y 坐标列表
+        :param resolution: 地图分辨率/栅格大小
+        :param robot_radius: 机器人半径/轴距
+        :param ang_step: 机器人离散转角步长，单位为弧度
+        '''
         self.min_x = None
         self.min_y = None
         self.max_x = None
@@ -19,31 +24,40 @@ class Dijkstra:
         self.y_width = None
         self.obstacle_map = None
 
+        self.ang_step = ang_step
         self.resolution = resolution  # 网格大小(m)
         self.robot_radius = robot_radius  #
         self.calc_obstacle_map(ox, oy)  # 绘制栅格地图
-        self.motion = self.get_motion_model()  # 机器人路线权重
+        #self.motion = self.get_motion_model()  # 机器人路线权重
 
-    # 构建节点，每个网格代表一个节点
+    # 构建节点，每个可行连续位置代表一个节点
     class Node:
-        def __init__(self, x, y, cost, parent_index):
+        def __init__(self, rx, ry, x, y, theta, cost, parent_index):
             self.x = x  # 网格索引
             self.y = y
+            self.rx = rx # 真实坐标
+            self.ry = ry
+            self.theta = theta # 节点角度
             self.cost = cost  # 路径值
             self.parent_index = parent_index  #网格父节点
 
         def __str__(self):
             return str(self.x) + ',' + str(self.y) + ',' + str(self.cost) + ',' + str(self.parent_index)
 
-    # 寻找最优路径，网格起始坐标(sx,sy)，终点坐标（gx,gy）
-    def planning(self, sx, sy, gx, gy):
+    # 寻找最优路径，网格起始坐标(sx,sy)，终点坐标（gx,gy），起点角度 theta
+    def planning(self, sx, sy, theta, gx, gy):
+        '''寻路
+        :param sx, sy: 起始点坐标
+        :param theta: 起始点机器人朝向，单位为弧度
+        :param gx, gy: 终止点坐标
+        '''
         # 节点初始化
         # 将已知的起点和终点坐标形式转化为节点类型，0代表路径权重，-1代表无父节点
-        start_node = self.Node(self.calc_xy_index(sx, self.min_x),
-                               self.calc_xy_index(sy, self.min_y), 0.0, -1)
+        start_node = self.Node(sx, sy, self.calc_xy_index(sx, self.min_x),
+                               self.calc_xy_index(sy, self.min_y), theta, 0.0, -1)
         # 终点
-        goal_node = self.Node(self.calc_xy_index(gx, self.min_x),
-                              self.calc_xy_index(gy, self.min_y), 0.0, -1)
+        goal_node = self.Node(gx, gy, self.calc_xy_index(gx, self.min_x),
+                              self.calc_xy_index(gy, self.min_y), 0, 0.0, -1)
         # 保存入库节点和待计算节点
         open_set, closed_set = dict(), dict()
         # 先将起点入库，获取每个网格对应的key
@@ -59,15 +73,17 @@ class Dijkstra:
             current = open_set[c_id]  # 从字典中取出该节点
 
             # 绘图
-            """
+            """"""
             if show_animation:
                 # 网格索引转换为真实坐标
+                #print(current)
                 plt.plot(self.calc_position(current.x, self.min_x),
                          self.calc_position(current.y, self.min_y), 'xc')
                 plt.pause(0.0001)
-            """
+            
             # 判断是否是终点，如果选出来的损失最小的点是终点
-            if current.x == goal_node.x and current.y == goal_node.y:
+            if current.x == goal_node.x and current.y == goal_node.y \
+               or math.hypot(current.rx - goal_node.rx, current.ry - goal_node.ry) <= 0.4:
                 # 更新终点的父节点
                 goal_node.cost = current.cost
                 # 更新终点的损失
@@ -79,30 +95,28 @@ class Dijkstra:
             closed_set[c_id] = current
 
             # 遍历邻接节点
-            for move_x, move_y, move_cost in self.motion:
+            for new_node in self.get_new_nodes(current):
                 # 获取每个邻接节点的节点坐标，到起点的距离，父节点
-                node = self.Node(current.x + move_x,
-                                 current.y + move_y,
-                                 current.cost + move_cost, c_id)
+
                 # 获取该邻居节点的key
-                n_id = self.calc_index(node)
+                n_id = self.calc_index(new_node)
 
                 # 如果该节点入库了，就看下一个
                 if n_id in closed_set:
                     continue
 
                 # 邻居节点是否超出范围了，是否在障碍物上
-                if not self.verify_node(node):
+                if not self.verify_node(new_node):
                     continue
 
                 # 如果该节点不在外库中，就作为一个新节点加入到外库
                 if n_id not in open_set:
-                    open_set[n_id] = node
+                    open_set[n_id] = new_node
                 # 节点在外库中时
                 else:
                     # 如果该点到起点的距离，要小于外库中该点的距离，就更新外库中的该点信息，更改路径
-                    if node.cost <= open_set[n_id].cost:
-                        open_set[n_id] = node
+                    if new_node.cost <= open_set[n_id].cost:
+                        open_set[n_id] = new_node
 
         # 找到终点
         rx, ry = self.calc_final_path(goal_node, closed_set)
@@ -115,23 +129,32 @@ class Dijkstra:
     # ------------------------------ #
     @staticmethod
     def calc_heuristic(n1, n2):  # n1终点，n2当前网格
-        w = 1.0  # 单个启发函数的权重，如果有多个启发函数，权重可以设置的不一样
-        d = w * math.hypot(n1.x - n2.x, n1.y - n2.y)  # 当前网格和终点距离
-        return d
+        w = [0.99, 0.01]  # 单个启发函数的权重，如果有多个启发函数，权重可以设置的不一样
+        d = w[0] * math.hypot(n1.x - n2.x, n1.y - n2.y)  # 当前网格和终点距离
+        _gx, _gy = n1.rx - n2.rx, n1.ry - n2.ry
+        if n1.x - n2.x == 0:
+            k = w[1] * np.abs(np.rad2deg(np.sign(n1.ry - n2.ry) * np.pi / 2 - n2.theta))
+        else: 
+            k = w[1] * np.abs(np.rad2deg(n2.theta - np.arctan(_gy / _gx))) # 机器人朝向与机器人到终点的直线距离夹角
+        return d + k
 
-    # 机器人行走的方式，每次能向周围移动8个网格移动
-    @staticmethod
-    def get_motion_model():
+    # 机器人行走的方式，每次能向前方 7 个连续位置移动
+    def get_new_nodes(self, node: Node):
         # [dx, dy, cost]
-        motion = [[1, 0, 1],  # 右
-                  [0, 1, 1],  # 上
-                  [-1, 0, 1],  # 左
-                  [0, -1, 1],  # 下
-                  [-1, -1, 1],#math.sqrt(2)],  # 左下
-                  [-1, 1, 1],#math.sqrt(2)],  # 左上
-                  [1, -1, 1],#math.sqrt(2)],  # 右下
-                  [1, 1, 1]]#math.sqrt(2)]]  # 右上
-        return motion
+        # 2023/03/23 future: 路径曲率受最大转向角约束
+        new_node = []
+        for i in range(-4, 4):
+            l = np.sqrt(2.2) * self.resolution
+            angle = np.arctan(2 * self.robot_radius / l * np.sin(self.ang_step * i / 2))
+            px, py = l * np.cos(node.theta), l * np.sin(node.theta)
+            nx = node.rx + np.cos(angle) * px + np.sin(angle) * py
+            ny = node.ry + np.cos(angle) * py - np.sin(angle) * px
+            new_node.append(self.Node(nx, ny, 
+                                      self.calc_xy_index(nx, self.min_x), 
+                                      self.calc_xy_index(ny, self.min_y),
+                                      node.theta - angle,
+                                      1 + np.abs(angle) * 2, self.calc_index(node)))
+        return new_node
 
     # 绘制栅格地图
     def calc_obstacle_map(self, ox, oy):
@@ -217,13 +240,13 @@ class Dijkstra:
 def main():
     # 设置起点和终点
     sx = 10.0
-    sy = 30.0
-    gx = 70.0
-    gy = 70.0
+    sy = 20.0
+    gx = 30
+    gy = 10
     # 网格大小
     grid_size = 0.5
     # 机器人半径
-    robot_radius = 1.0
+    robot_radius = 0.45
 
     # 设置障碍物位置
     ox, oy = [], []
@@ -236,17 +259,17 @@ def main():
 
     # 绘图
     if show_animation:
-        plt.plot(ox, oy, '.k')  # 障碍物黑色
+        plt.plot(gx, gy, '.k')  # 障碍物黑色
         plt.plot(sx, sy, 'og')  # 起点绿色
         plt.grid(True)
         plt.axis('equal')  # 坐标轴刻度间距等长
 
     # 实例化，传入障碍物，网格大小
-    dijkstra = Dijkstra(ox, oy, grid_size, robot_radius)
+    #dijkstra = Dijkstra(ox, oy, grid_size, robot_radius)
     # 求解路径，返回路径的 x 坐标和 y 坐标列表
-    t1=time.time()
-    finder = Dijkstra([0, 50], [0, 50], 0.25, 0.45)
-    paths = finder.planning(3, 3, 1, 1)
+    #t1=time.time()
+    finder = Dijkstra([0, 50], [0, 50], grid_size, robot_radius, np.deg2rad(10))
+    paths = finder.planning(sx, sy, np.deg2rad(-180), gx, gy)
     print(paths)
     #res = dijkstra.planning(sx, sy, gx, gy)#需实际校对
     #print(res)#绘图模块删掉后决策离散路线在10ms左右

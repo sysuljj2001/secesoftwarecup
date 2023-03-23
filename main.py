@@ -5,6 +5,7 @@ from components.scheduler import Scheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller
 import logging
+import numpy as np
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -22,8 +23,8 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
-    pid_controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
-    finder = A_star.Dijkstra([0, 50], [0, 50], 0.25, 0.45)
+    pid_controller = [PID_Controller(kp=4, ki=0.01, kd=0.01) for _ in range(4)] #调用机器人控制类
+    finder = A_star.Dijkstra([0, 50], [0, 50], 0.25, 0.45, np.deg2rad(30))
     scheduler = Scheduler(4, None, 5, finder=finder)
     paths = []
     while True:
@@ -43,17 +44,19 @@ if __name__ == '__main__':
             [x.refresh() for x in pid_controller]
 
         # 以下操作统统在调度器中完成
-        for i in range(4):
-            if dataloader.frame_id % 100 == 1:
-                scheduler.glob_plan(dataloader)
-                [x.refresh() for x in pid_controller]
+        for i in range(1):
+            #if dataloader.frame_id % 1000 == 1:
+            #    scheduler.glob_plan(dataloader)
+            #    [x.refresh() for x in pid_controller]
 
             if scheduler.check_finish(i, dataloader) or dataloader.frame_id == 1:
                 pid_controller[i].refresh()
                 scheduler.plan(i, dataloader)
                 event = scheduler.bot_tasks[i].get_event()
-                path = event.path
-                pid_controller[i].update_path(path[::4])
+                path, last_pt = event.path, event.path[-1]
+                paths = path[3::3]
+                paths.append(last_pt)
+                pid_controller[i].update_path(paths)
                 s = dataloader.tables[event.target_id]['coord']
                 logging.info(f'botid: {i}, targetid: {event.target_id}, targetpos: {s}')
             
