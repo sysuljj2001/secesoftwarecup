@@ -6,6 +6,10 @@ import numpy as np
 import sys
 
 MAP_SIZE = 50
+TARGET_MAT = [[], [], [], [1, 2], [1, 3], [2, 3], [4, 5, 6], [], []]
+BUY_COST = [3000, 4400, 5800, 15400, 17200, 19200, 76000]
+SELL_REWARD = [6000, 7600, 9200, 22500, 25000, 27500, 105000]
+PROCESS_TIME = [50, 50, 50, 500, 500, 1000, 1, 1]
 
 def get_coord(map_x: int, map_y: int):
     '''根据地图字符矩阵获取坐标
@@ -109,6 +113,49 @@ class DataLoader():
             self.bots[i]['coord'] = [float(data[8]), float(data[9])]
         
         sys.stdout.write('%d\n' % self.frame_id)
+    
+    def bot_at(self, bot_id: int):
+        return self.bots[bot_id]['at_id']
+    
+    def bot_motion(self, bot_id: int):
+        '''获取机器人运动状态(w, v, p)
+        '''
+        return self.bots[bot_id]['w'], self.bots[bot_id]['v'], self.bots[bot_id]['p']
+
+    def bot_item(self, bot_id: int):
+        return self.bots[bot_id]['item_type']
+    
+    def bot_coef(self, bot_id: int):
+        '''获取机器人价值系数(time_coef, coll_coef)
+        '''
+        return self.bots[bot_id]['time_coef'], self.bots[bot_id]['coll_coef']
+
+    def bot_coord(self, bot_id: int):
+        return self.bots[bot_id]['coord']
+        
+    def table_type(self, table_id: int):
+        return self.tables[table_id]['table_type']
+
+    def table_coord(self, table_id: int):
+        return self.tables[table_id]['coord']
+        
+    def valid_mat(self, table_id: int):
+        '''获取工作台的当前可卖物品列表
+        '''
+        table_type = self.map_status[table_id]['table_type']
+        valid = TARGET_MAT[table_type - 1]
+        mat_stat = self.tables[table_id]['mat_status']
+        return list(set(valid) - set(mat_stat))
+        
+    def prod_status(self, table_id: int):
+        '''获取工作台当前产品格状态
+        '''
+        return self.tables[table_id]['prod_status']
+        
+    def time_left(self, table_id: int):
+        '''获取工作台生产剩余时间
+        '''
+        return self.tables[table_id]['remain_time']
 
 if __name__ == '__main__':
     print(bit_to_list(48))

@@ -6,6 +6,10 @@ from typing import List
 min_set = 10
 show_animation = False  # 绘图
 
+class SimpleFinder():
+    def __init__(self) -> None:
+        pass
+
 # 创建一个类
 class Dijkstra:
     # 初始化
