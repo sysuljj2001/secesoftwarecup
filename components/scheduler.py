@@ -81,7 +81,6 @@ class Scheduler():
 
     def plan(self, bot_id, map_status: DataLoader):
         bot_x, bot_y = map_status.bots[bot_id]['coord']
-        ang = map_status.bots[bot_id]['p']
         while True:
             ret = random.sample(map_status.tables, 1)[0]
             table_x, table_y = ret['coord']
@@ -119,6 +118,9 @@ class Scheduler():
         table = map_status.tables[event.target_id]
         bot = map_status.bots[bot_id]
         table_type = table['table_type']
+        
+        if action == 'destroy':
+            return True
         # 到达任务点，检查任务是否可用
         if bot['at_id'] == table['id']:
             if action == 'buy' and table['prod_status'] == 1 and bot['item_type'] == 0:
@@ -231,26 +233,6 @@ class SimpleScheduler(Scheduler):
                 event = Task(ret[1]['path'], 1, ret[1]['table_id'])
                 self.bot_tasks[bot_id].add_event(event)
 
-    def check_finish(self, bot_id, map_status: DataLoader):
-        event = self.bot_tasks[bot_id].get_event()
-        if event is None:
-            return False
-        action = event.action_list[str(event.action)]
-
-        table = map_status.tables[event.target_id]
-        bot = map_status.bots[bot_id]
-        table_type = table['table_type']
-        # 到达任务点，检查任务是否可用
-        if bot['at_id'] == table['id']:
-            if action == 'buy' and table['prod_status'] == 1 and bot['item_type'] == 0:
-                return True
-            if action == 'sell' and bot['item_type'] not in table['mat_status'] \
-               and bot['item_type'] in TARGET_MAT[table_type - 1] and bot['item_type'] != 0:
-                return True
-            return False
-        else:
-            return False
-
     def glob_plan(self, map_status: DataLoader):
         for bot_id in range(len(map_status.bots)):
             self.plan(bot_id, map_status)
@@ -259,6 +241,9 @@ class State():
     def __init__(self, bot_id: int, map_status: DataLoader, paths: List) -> None:
         self.map_status = map_status
         self.bot_id = bot_id
+        self.bot_item = map_status.bot_item(bot_id)
+        self.bot_coord = map_status.bot_coord(bot_id)
+        self.bot_at = map_status.bot_at(bot_id)
         self.paths = paths
         self.tasks = []
 
@@ -282,11 +267,11 @@ class State():
         ret = self._get_path(target_id)
         self.tasks.append(Task(ret, 1, target_id))
 
-    def destroy(self, target_id):
+    def destroy(self):
         '''在当前地图状态下将{销毁自身携带的物品}加入一个bot的任务队列并置于首端
         '''
-        ret = self._get_path(target_id)
-        self.tasks.insert(0, Task(ret, 2, target_id))
+        bot_coord = self.map_status.bot_coord(self.bot_id)
+        self.tasks.insert(0, Task([bot_coord], 2, -1))
 
 class ValueMap():
     def __init__(self, map_status: DataLoader) -> None:
@@ -412,3 +397,6 @@ class StateMachineScheduler(Scheduler):
         '''
         value_map = ValueMap(map_status)
         self.engine.glob_plan(map_status, value_map, self.bot_tasks)
+        for bot_id in range(len(map_status.bots)):
+            if self.bot_tasks[bot_id].get_event() is None:
+                self.plan(bot_id, map_status)

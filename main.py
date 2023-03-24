@@ -1,9 +1,10 @@
 #!/bin/bash
 import sys
 from components.finder import Dijkstra
-from components.scheduler import Scheduler, SimpleScheduler
+from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller
+from components.engine import MapAEngine, AFuckingTestingEngine
 import logging
 import numpy as np
 
@@ -25,7 +26,10 @@ if __name__ == '__main__':
     finish()
     controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
     finder = Dijkstra([0, 50], [0, 50], 2, 0.45)
-    scheduler = SimpleScheduler(4, None, 2, finder=finder)
+    engines = [
+        AFuckingTestingEngine(),
+    ]
+    scheduler = StateMachineScheduler(4, None, 2, finder=finder, engine=engines[0])
     # 机器人状态，1 执行任务 2 进行决策 3 移动
     bot_status = [3] * 4
     while True:
@@ -40,11 +44,9 @@ if __name__ == '__main__':
         tables = dataloader.tables
         # 2023/03/22 feature: 完成一个机器人的 PID 控制
         # 2023/03/22 future: 重构代码
-
         if dataloader.frame_id == 1:
             scheduler.glob_plan(dataloader)
             [x.refresh() for x in controller]
-
         # 以下操作统统在调度器中完成
         for i in range(4):
             #if dataloader.frame_id % 300 == 0:
@@ -62,10 +64,15 @@ if __name__ == '__main__':
                 controller[i].refresh()
                 scheduler.plan(i, dataloader)
                 event = scheduler.feedback(i)
-                path = [dataloader.table_coord(event.target_id)]
-                controller[i].update_path(path)
+
                 s = dataloader.table_coord(event.target_id)
                 logging.info(f'botid: {i}, targetid: {event.target_id}, targetpos: {s}')
+                if event.action == 2:
+                    # 如果遭遇销毁指令，跳过该帧
+                    bot_status[i] = 3
+                    continue
+                path = [dataloader.table_coord(event.target_id)]
+                controller[i].update_path(path)
             elif bot_status[i] == 2 or bot_status[i] == 3:
                 # 移动，并判断是否销毁，更新控制器信息
                 bot_status[i] = 3

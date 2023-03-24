@@ -5,8 +5,9 @@
 import numpy as np
 import random
 from components.scheduler import Task, TaskQueue, ValueMap, State
-from components.preprocess import DataLoader
+from components.preprocess import DataLoader, TARGET_MAT, BUY_COST, SELL_REWARD, PROCESS_TIME, MAP_SIZE
 from typing import List
+import logging
 
 class Engine():
     def __init__(self) -> None:
@@ -15,7 +16,7 @@ class Engine():
     def bot_plan(self, bot: State):
         '''单机器人决策入口
         :param bot: 抽象机器人类，用于执行该帧动作，可调用方法 buy(), sell(), destroy()
-        :bot.paths 是一个路径列表，存储了 bot 到达所有工作台的路径，其中元素例 {'path': [(1, 1)], 'table_id': 1}
+        :bot.paths 是一个路径列表，存储了 bot 到达所有工作台的最短路径，其中元素例 {'path': [(1, 1)], 'table_id': 1}
         :bot.tasks 是该机器人的任务队列，尽量不要动他，而使用 buy() 等方法增加可读性
         :bot.map_status 是该机器人在当前帧观测到的地图状态，与 preprocessor.Dataloader 定义一致
 
@@ -30,7 +31,46 @@ class Engine():
         '''
         pass
 
-class MapAEngine():
+class AFuckingTestingEngine(Engine):
+    def __init__(self) -> None:
+        pass
+
+    def bot_plan(self, bot: State):
+        tables = bot.map_status.tables
+        if bot.bot_item != 0:
+            flag = False
+            for pair in bot.paths:
+                path, table_id = pair['path'], pair['table_id']
+                if bot.bot_at == table_id:
+                    continue
+                table_type = tables[table_id]['table_type']
+                if bot.bot_item not in tables[table_id]['mat_status'] \
+                   and bot.bot_item in TARGET_MAT[table_type - 1] and bot.bot_item != 0:
+                    bot.sell(table_id)
+                    flag = True
+                    if tables[table_id]['prod_status'] == 1:
+                        bot.buy(table_id)
+                    break
+            if not flag:
+                bot.destroy()
+        else:
+            flag = False
+            for pair in bot.paths:
+                path, table_id = pair['path'], pair['table_id']
+                if bot.bot_at == table_id:
+                    continue
+                if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
+                    bot.buy(table_id)
+                    flag = True
+                    break
+            if flag == False:
+                bot.buy(bot.paths[1]['table_id'])
+        return bot
+
+    def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
+        return
+
+class MapAEngine(Engine):
     def __init__(self) -> None:
         pass
 
