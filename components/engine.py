@@ -98,61 +98,60 @@ class GeneralEngine(Engine):
             # 卖
             # 优先卖到原材料栏快满的
             # 如果有高级物品可以卖，优先卖高级物品
+            ''' 这个暂时还是反向优化
             if len(set(sellable_item) & set([4, 5, 6, 7])) > 0:
-                s_tables = sorted(tables, key=lambda x : x['table_type'])
-                s_tables.reverse()
-                for table in s_tables:
-                    if table['prod_status'] == 1 and table['table_type'] >= 7:
-                        bot.sell(table['id'])
-                        break
-                    elif table['prod_status'] == 1 and table['table_type'] >= 4:
-                        bot.sell(table['id'])
-                        break
-                    elif table['prod_status'] == 1 and table['table_type'] in sellable_item:
-                        bot.sell(table['id'])
-                        break
-            else:
-                flag = False
                 s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
                 s_tables.reverse()
-                for table in tables:
-                    table_id = table['id']
-                    if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
-                        if bot.map_status.table_type(table_id) == 9:
+                for table in s_tables:
+                    if bot.bot_item in bot.map_status.valid_mat(table['id']):
+                        if table['table_type'] >= 7:
+                            bot.sell(table['id'])
+                            break
+                        elif table['table_type'] >= 4:
+                            bot.sell(table['id'])
+                            break
+                        else:
+                            bot.sell(table['id'])
+                            break
+                        '''
+            flag = False
+            for pair in bot.paths:
+                path, table_id = pair['path'], pair['table_id']
+                if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
+                    if bot.map_status.table_type(table_id) == 9:
+                        continue
+                    bot.sell(table_id)
+                    flag = True
+                if bot.bot_at == table_id:
+                    if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
+                        # 如果买了没地方卖的，就换一个东西买
+                        prod_type = tables[table_id]['table_type']
+                        if prod_type not in sellable_item:
                             continue
-                        bot.sell(table_id)
-                        flag = True
-                    if bot.bot_at == table_id:
-                        if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
-                            # 如果买了没地方卖的，就换一个东西买
-                            prod_type = tables[table_id]['table_type']
-                            if prod_type not in sellable_item:
-                                continue
-                            bot.buy(table_id)
-                if not flag:
-                    # 只有第一级物品可销毁
-                    if bot.bot_item <= 3:
-                        bot.destroy()
-                    elif 3 < bot.bot_item <= 6:
-                        s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
-                        if len(s_tables):
-                            bot.sell(random.sample(s_tables, 1)[0]['id'])
-                    else:
-                        s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
-                        if len(s_tables):
-                            bot.sell(random.sample(s_tables, 1)[0]['id'])
+                        bot.buy(table_id)
+            if not flag:
+                # 只有第一级物品可销毁
+                if bot.bot_item <= 3:
+                    bot.destroy()
+                elif 3 < bot.bot_item <= 6:
+                    s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
+                    if len(s_tables):
+                        bot.sell(random.sample(s_tables, 1)[0]['id'])
+                else:
+                    s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
+                    if len(s_tables):
+                        bot.sell(random.sample(s_tables, 1)[0]['id'])
         else:
             # 如果有高级物品可以买，优先买高级物品
             # 优先买缺的物品（可卖的高级物品）
             if len(set(buyable_item) & set([4, 5, 6, 7])) > 0:
                 s_tables = sorted(tables, key=lambda x : x['table_type'])
                 s_tables.reverse()
-                for table in tables:
+                for table in s_tables:
                     if table['prod_status'] == 1 and table['table_type'] >= 7:
                         bot.buy(table['id'])
                         break
                     elif table['prod_status'] == 1 and table['table_type'] >= 4:
-                        logging.info('buy')
                         bot.buy(table['id'])
                         break
                     elif table['prod_status'] == 1 and table['table_type'] in sellable_item:

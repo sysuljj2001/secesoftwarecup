@@ -99,7 +99,7 @@ if __name__ == '__main__':
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.2, 3)
+        #vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.2, 3)
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))
