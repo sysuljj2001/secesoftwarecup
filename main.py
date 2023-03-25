@@ -24,7 +24,7 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
-    controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
+    controller = [PID_Controller(kp=4.5, ki=0.001, kd=0.00005) for _ in range(4)] #调用机器人控制类
     #finder = Dijkstra([0, 50], [0, 50], 1.25, 0.45)
     finder = SimpleFinder()
     engines = [
@@ -97,6 +97,7 @@ if __name__ == '__main__':
                 continue
 
             vel[i], ang_vel[i] = res[0], res[1]
+            if vel[i] <= 0.1: vel[i] = -2
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])

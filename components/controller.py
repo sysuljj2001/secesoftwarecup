@@ -388,15 +388,15 @@ class PID_Controller():
         angular_velocity = self.pid.update(angle_to_goal, dt)
         if linear_velocity > 6: linear_velocity = 6
         elif linear_velocity < -2: linear_velocity = -2
-        if angular_velocity > 3: angular_velocity = 3
-        elif angular_velocity < -3: angular_velocity = -3
+        if angular_velocity > np.pi: angular_velocity = np.pi
+        elif angular_velocity < -np.pi: angular_velocity = -np.pi
 
         ''''''
         if angle_to_goal >= np.pi:
             angular_velocity = 3
             linear_velocity = 1.5
         elif angle_to_goal <= -np.pi:
-            angular_velocity = 3
+            angular_velocity = -3
             linear_velocity = 1.5
         elif angle_to_goal >= np.pi / 2:
             angular_velocity = 3

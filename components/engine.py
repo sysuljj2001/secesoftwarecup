@@ -90,10 +90,12 @@ class GeneralEngine(Engine):
         # 获取场上可卖、可买物品列表
         sellable_item = []
         buyable_item = []
+        bot_item_list = []
         for table_id in range(len(tables)):
             valid_list = bot.map_status.valid_mat(table_id)
             [sellable_item.append(x) for x in valid_list]
         [buyable_item.append(table['table_type']) if bot.map_status.prod_status(table['id']) else None for table in tables]
+        [bot_item_list.append(bot['item_type']) if bot['item_type'] != 0 else 0 for bot in bot.map_status.bots]
         if bot.bot_item != 0:
             # 卖
             # 优先卖到原材料栏快满的
@@ -156,11 +158,18 @@ class GeneralEngine(Engine):
         else:
             # 如果有高级物品可以买，优先买高级物品
             # 优先买缺的物品（可卖的高级物品）
+            # 不买现在机器人拿的多的
+            # 如果买到可能销毁，不买
             flag = False
             if len(set(buyable_item) & set([4, 5, 6, 7])) > 0:
                 s_tables = sorted(tables, key=lambda x : x['table_type'])
                 s_tables.reverse()
                 for table in s_tables:
+                    if bot_item_list.count(table['table_type']) >= 1:
+                        continue
+                    prod_type = table['table_type']
+                    if prod_type not in sellable_item:
+                        continue
                     if table['prod_status'] == 1 and table['table_type'] >= 7:
                         bot.buy(table['id'])
                         flag = True
@@ -171,22 +180,26 @@ class GeneralEngine(Engine):
                         break
                     elif table['prod_status'] == 1 and table['table_type'] in sellable_item:
                         bot.buy(table['id'])
+                        #logging.info('test1')
                         flag = True
                         break
             if not flag:
                 flag1 = False
                 for pair in bot.paths:
                     path, table_id = pair['path'], pair['table_id']
+                    if bot_item_list.count(bot.map_status.tables[table_id]['table_type']) >= 2:
+                        continue
                     if bot.bot_at == table_id:
                         continue
                     # 如果地图上没有工作台可以卖出该物品，不买
                     # 如果地图上有高级物品，不买低级物品
-                    # 优先买高级物品，优先买能卖的地方多的物品
+                    # 优先买能卖的地方多的物品
+                    # 不买卖不出去的
                     if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
                         prod_type = tables[table_id]['table_type']
                         if prod_type not in sellable_item:
                             continue
-                        if sellable_item.count(prod_type) <= 1:
+                        if sellable_item.count(prod_type) <= 2:
                             continue
                         bot.buy(table_id)
                         flag1 = True
@@ -196,6 +209,7 @@ class GeneralEngine(Engine):
                     s_tables = sorted(tables, key=lambda x : x['remain_time'])
                     for table in s_tables:
                         if table['table_type'] < 4: continue
+                        #logging.info('test3')
                         bot.buy(table['id'])
                         break
         return bot
@@ -204,7 +218,15 @@ class GeneralEngine(Engine):
         
         def pack_task(target_id, action):
             return Task([map_status.table_coord(table_id)], action, target_id)
-        
+        tables = map_status.tables
+        sellable_item = []
+        buyable_item = []
+        bot_item_list = []
+        for table_id in range(len(tables)):
+            valid_list = map_status.valid_mat(table_id)
+            [sellable_item.append(x) for x in valid_list]
+        [buyable_item.append(table['table_type']) if map_status.prod_status(table['id']) else None for table in tables]
+        [bot_item_list.append(bot['item_type']) if bot['item_type'] != 0 else 0 for bot in map_status.bots]
         header_tasks = [bot_task.get_event() for bot_task in bot_tasks]
         # 如果要销毁，先进行全局决策
 
@@ -226,6 +248,10 @@ class GeneralEngine(Engine):
                 if header_tasks[bot_id] is None:
                     # 如果可以买
                     if bot['item_type'] == 0 and table['prod_status'] == 1:
+                        prod_type = table['table_type']
+                        if prod_type not in sellable_item:
+                            continue
+                        #logging.info('test4')
                         event = pack_task(table_id, 1)
                         bot_tasks[bot_id].add_event(event)
                         break
@@ -261,12 +287,15 @@ class GeneralEngine(Engine):
                         if action == 1:
                             # 如果可以买
                             if bot['item_type'] == 0 and table['prod_status'] == 1:
-                                event = pack_task(table_id, 1)
-                                bot_tasks[ad_bot].activate()
-                                bot_tasks[ad_bot].add_event(event)
-                                flag = True
+                                prod_type = table['table_type']
+                                # Weired Bug
+                                if prod_type in sellable_item:
+                                    event = pack_task(table_id, 1)
+                                    bot_tasks[ad_bot].activate()
+                                    bot_tasks[ad_bot].add_event(event)
+                                    flag = True
                                 #logging.info(f'{table_id}, {ad_target}')
-                                break
+                                    break
                         if action == 0:
                             # 如果可以卖
                             if bot['item_type'] in map_status.valid_mat(table_id) and bot['item_type'] != 0:
@@ -279,6 +308,36 @@ class GeneralEngine(Engine):
                     
 
 class MapAEngine(Engine):
+    def __init__(self) -> None:
+        pass
+
+    def bot_plan(self, bot: State):
+        pass
+
+    def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
+        pass
+
+class MapBEngine(Engine):
+    def __init__(self) -> None:
+        pass
+
+    def bot_plan(self, bot: State):
+        pass
+
+    def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
+        pass
+
+class MapCEngine(Engine):
+    def __init__(self) -> None:
+        pass
+
+    def bot_plan(self, bot: State):
+        pass
+
+    def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
+        pass
+
+class MapDEngine(Engine):
     def __init__(self) -> None:
         pass
 
