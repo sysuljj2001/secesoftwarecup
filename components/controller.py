@@ -235,6 +235,69 @@ class RVO_Contorller():
         self.cache = {'v': v_list, 'w': w_list}
         return {'v': v_list, 'w': w_list}
 
+
+def distance(p1, p2):
+    return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) + 0.001
+
+def check_distance(p1, p2, boundary=0.5):
+    return RVO_Contorller.distance(p1, p2) < boundary
+
+def glob_check(bot_infos: List, dis: float, bot_radius: float):
+        '''全局碰撞预警
+        :param dis: 预警距离阈值（虚拟围栏）
+        '''
+        for bot_1 in bot_infos:
+            for bot_2 in bot_infos:
+                if bot_1['id'] == bot_2['id']: continue
+                if check_distance(bot_1['coord'], bot_2['coord'], dis + bot_radius * 2):
+                    return True
+        return False
+
+def repulsive_force(dist, safe_distance, k=1):
+    return k * (1/dist - 1/safe_distance) * (1/(dist**2))
+
+def avoid_collision(pos, vel, ang_vel, 
+                    ori, dt=0.1, safe_distance=2, max_speed=6.0, 
+                    max_angular_velocity=np.pi):
+    num_agents = len(pos)
+    new_velocities = [np.array([v * np.cos(ori[i]), v * np.sin(ori[i])]) for i, v in enumerate(vel)]
+    new_angular_velocities = ang_vel.copy()
+
+    for i in range(num_agents):
+        for j in range(i+1, num_agents):
+
+            # 计算两智能体之间的距离
+            dist = np.linalg.norm(pos[j] - pos[i])
+
+            # 如果距离小于安全距离，进行规避操作
+            if dist < safe_distance:
+                # 计算两智能体间的方向向量
+                direction = (pos[j] - pos[i]) / dist
+
+                force = repulsive_force(dist, safe_distance)
+                # 为避免碰撞，智能体i和j分别调整速度和角速度
+                new_velocities[i] -= direction * force * dt
+                new_velocities[j] += direction * force * dt
+
+                angle_i = ori[i]
+                angle_j = ori[j]
+
+                # 计算角度差
+                angle_diff = (angle_j - angle_i) % (2 * np.pi)
+                if angle_diff > np.pi:
+                    angle_diff -= 2 * np.pi
+
+                # 调整角速度
+                if angle_diff > 0:
+                    new_angular_velocities[i] -= max_angular_velocity  * dt
+                    new_angular_velocities[j] += max_angular_velocity  * dt
+                else:
+                    new_angular_velocities[i] += max_angular_velocity  * dt
+                    new_angular_velocities[j] -= max_angular_velocity * dt
+
+    new_velocities = [np.linalg.norm(v) for v in new_velocities]
+    return new_velocities, new_angular_velocities
+
 class PID:
     def __init__(self, kp, ki, kd):
         '''PID 计算器

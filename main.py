@@ -3,7 +3,7 @@ import sys
 from components.finder import Dijkstra
 from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
-from components.controller import PID_Controller, RVO_Contorller
+from components.controller import PID_Controller, RVO_Contorller, glob_check, avoid_collision
 from components.engine import MapAEngine, AFuckingTestingEngine
 import logging
 import numpy as np
@@ -25,7 +25,6 @@ if __name__ == '__main__':
     dataloader.init()
     finish()
     controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
-    coll_controller = RVO_Contorller(0.45)
     finder = Dijkstra([0, 50], [0, 50], 2, 0.45)
     engines = [
         AFuckingTestingEngine(),
@@ -43,34 +42,21 @@ if __name__ == '__main__':
         # 决策、控制
         bot_infos = dataloader.bots
         tables = dataloader.tables
+        vel, ang_vel = np.zeros(4), np.zeros(4)
         # 2023/03/22 feature: 完成一个机器人的 PID 控制
         # 2023/03/22 future: 重构代码
         if dataloader.frame_id == 1:
             scheduler.glob_plan(dataloader)
             [x.refresh() for x in controller]
-        
-        coll_controller.update_bots(dataloader)
-        # 是否启用 rvo
-        is_rvo = coll_controller.glob_check(50)
-        if is_rvo and coll_controller.freeze == False:
-            for i in range(4):
-                if len(scheduler.bot_tasks[i].task_queue) <= 0:
-                    scheduler.plan(i, dataloader)
-            paths = [task.path for task in scheduler.feedback_all()]
-            coll_controller.update_targets(dataloader, paths)
-            rvo_res = coll_controller.handle(0.015)
-            if rvo_res is None:
-                coll_controller.freeze = True
-                is_rvo = False
-                coll_controller.refresh()
+    
         # 四个机器人分别执行任务和控制
         for i in range(4):
             if dataloader.frame_id % 100 == 0:
                 scheduler.glob_plan(dataloader)
                 [x.refresh() for x in controller]
             controller[i].update_bot(bot_infos[i])
-            res = scheduler.check_finish(i, dataloader)
-            if res and bot_status[i] == 3:
+            ret = scheduler.check_finish(i, dataloader)
+            if ret and bot_status[i] == 3:
                 bot_status[i] = 1
                 # 执行任务
                 task = scheduler.activate(i)
@@ -102,22 +88,20 @@ if __name__ == '__main__':
                 if event is None: continue
                 path = [dataloader.table_coord(event.target_id)]  
                 controller[i].update_path(path)
-            # 判断使用哪一个控制器
-            if not is_rvo or coll_controller.freeze == True:
                 res = controller[i].handle(0.015) # 当前帧所需控制指令
-                if coll_controller.check_time(1):
-                    coll_controller.freeze = False
-                    coll_controller.refresh()
-            else:
-                if rvo_res is not None:
-                    res = rvo_res['v'][i], rvo_res['w'][i]
-                    #logging.info(f'{res}, frame: {dataloader.frame_id}')
-                else: continue
+
             if res is None: 
                 controller[i].refresh()
                 continue
-            sys.stdout.write('forward %d %d\n' % (i, res[0]))
-            sys.stdout.write('rotate %d %f\n' % (i, res[1]))
+
+            vel[i], ang_vel[i] = res[0], res[1]
+        # 规避碰撞
+        pos = [np.array(bot['coord']) for bot in bot_infos]
+        ori = np.array([bot['p'] for bot in bot_infos])
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.5, 3)
+        for i in range(4):
+            sys.stdout.write('forward %d %d\n' % (i, vel[i]))
+            sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))
         finish()
 
 
