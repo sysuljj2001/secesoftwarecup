@@ -298,8 +298,8 @@ def avoid_collision(pos, vel, ang_vel,
                 # 已经撞在一起
                 new_angular_velocities[i] = -3
                 new_angular_velocities[j] = 3
-                new_velocities[i] = -1
-                new_velocities[j] = 1
+                new_velocities[i] = -2
+                new_velocities[j] = 2
 
     new_velocities = [min(np.linalg.norm(v), max_speed) for v in new_velocities]
     return new_velocities, new_angular_velocities

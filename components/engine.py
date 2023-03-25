@@ -100,10 +100,12 @@ class GeneralEngine(Engine):
             # 如果有高级物品可以卖，优先卖高级物品
             ''' 这个暂时还是反向优化'''
             if len(set(sellable_item) & set([4, 5, 6, 7])) > 0:
+                flag  = False
                 s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
                 s_tables.reverse()
                 for table in s_tables:
                     if bot.bot_item in bot.map_status.valid_mat(table['id']):
+                        flag = True
                         if table['table_type'] == 9:
                             if bot.bot_item >= 7:
                                 bot.sell(table['id'])
@@ -117,6 +119,21 @@ class GeneralEngine(Engine):
                         elif table['table_type'] != 9:
                             bot.sell(table['id'])
                             break
+                if not flag:
+                    # 到处都没得卖，如果
+                    flag1 = False
+                    if 3 < bot.bot_item <= 6:
+                        s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
+                        if len(s_tables):
+                            bot.sell(random.sample(s_tables, 1)[0]['id'])
+                            flag1 = True
+                    elif bot.bot_item > 6:
+                        s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
+                        if len(s_tables):
+                            bot.sell(random.sample(s_tables, 1)[0]['id'])
+                            flag1 = True
+                    if not flag1:
+                        bot.destroy()
             else:            
                 flag = False
                 for pair in bot.paths:
@@ -135,33 +152,29 @@ class GeneralEngine(Engine):
                             bot.buy(table_id)
                 if not flag:
                     # 只有第一级物品可销毁
-                    if bot.bot_item <= 3:
-                        bot.destroy()
-                    elif 3 < bot.bot_item <= 6:
-                        s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
-                        if len(s_tables):
-                            bot.sell(random.sample(s_tables, 1)[0]['id'])
-                    else:
-                        s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
-                        if len(s_tables):
-                            bot.sell(random.sample(s_tables, 1)[0]['id'])
+                    bot.destroy()
         else:
             # 如果有高级物品可以买，优先买高级物品
             # 优先买缺的物品（可卖的高级物品）
+            flag = False
             if len(set(buyable_item) & set([4, 5, 6, 7])) > 0:
                 s_tables = sorted(tables, key=lambda x : x['table_type'])
                 s_tables.reverse()
                 for table in s_tables:
                     if table['prod_status'] == 1 and table['table_type'] >= 7:
                         bot.buy(table['id'])
+                        flag = True
                         break
                     elif table['prod_status'] == 1 and table['table_type'] >= 4:
                         bot.buy(table['id'])
+                        flag = True
                         break
                     elif table['prod_status'] == 1 and table['table_type'] in sellable_item:
                         bot.buy(table['id'])
+                        flag = True
                         break
-            else:
+            if not flag:
+                flag1 = False
                 for pair in bot.paths:
                     path, table_id = pair['path'], pair['table_id']
                     if bot.bot_at == table_id:
@@ -176,6 +189,14 @@ class GeneralEngine(Engine):
                         if sellable_item.count(prod_type) <= 1:
                             continue
                         bot.buy(table_id)
+                        flag1 = True
+                        break
+                if not flag1:
+                    # 到处都买不了，随便去一个快好的价值最高的工作台
+                    s_tables = sorted(tables, key=lambda x : x['remain_time'])
+                    for table in s_tables:
+                        if table['table_type'] < 4: continue
+                        bot.buy(table['id'])
                         break
         return bot
     
