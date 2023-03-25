@@ -35,9 +35,10 @@ class Task():
 
 
 class TaskQueue():
-    def __init__(self, length) -> None:
+    def __init__(self, length, bot_id) -> None:
         self.task_queue = []
         self.len = length
+        self.bot_id = bot_id
 
     def __getitem__(self, key):
         if key < len(self.task_queue):
@@ -60,10 +61,25 @@ class TaskQueue():
             return self.task_queue[0]
         return None
 
-    def check_event(self, map_status):
+    def check_event(self, map_status: DataLoader):
         '''检查队首的任务是否可以执行
         '''
-        pass
+        event = self.get_event()
+        if event is None: return False
+        table = map_status.tables[event.target_id]
+        bot = map_status.bots[self.bot_id]
+        #logging.info(f'checking event {event.target_id}, {event.action}, {self.bot_id}')
+        if event.action == 1:
+            # 是否可以买
+            if bot['item_type'] == 0 and table['prod_status'] == 1:
+                return True
+        elif event.action == 0:
+            # 是否可卖
+            if bot['item_type'] in map_status.valid_mat(event.target_id) and bot['item_type'] != 0:
+                return True
+        elif event.action == 2:
+            return True
+        return False
 
 # 2023/03/22 future: 贪心调度器测试，每次让机器人去最近的工作台做能做的事情
 # 2023/03/22 feature: 简单调度器测试，每次让机器人去最近工作台，啥都不干
@@ -73,7 +89,7 @@ class Scheduler():
     def __init__(self, bot_num, metadata, queue_len, engine=None, finder=None) -> None:
         '''简单机器人调度器，输入地图状态和机器人状态，输出当前状态的决策（去哪个工作台干什么）
         '''
-        self.bot_tasks = [TaskQueue(queue_len) for i in range(bot_num)]
+        self.bot_tasks = [TaskQueue(queue_len, i) for i in range(bot_num)]
         self.engine = engine       # 机器人决策引擎
         self.finder = finder       # 机器人寻路引擎
         self.metadata = metadata
@@ -106,6 +122,9 @@ class Scheduler():
                     event = Task(path, 2, ret['id'])
                     self.bot_tasks[bot_id].add_event(event)
                     break
+    
+    def check_valid(self, bot_id, map_status: DataLoader):
+        return self.bot_tasks[bot_id].check_event(map_status)
 
     def check_finish(self, bot_id, map_status: DataLoader):
         '''检查机器人完成任务情况
@@ -136,6 +155,9 @@ class Scheduler():
         '''返回上次 plan 后每个机器人的决策
         '''
         return self.bot_tasks[bot_id].get_event()
+    
+    def feedback_all(self):
+        return [self.bot_tasks[bot_id].get_event() for bot_id in range(len(self.bot_tasks))]
 
     def activate(self, bot_id):
         return self.bot_tasks[bot_id].activate()
@@ -203,8 +225,7 @@ class SimpleScheduler(Scheduler):
                     continue
                 table_type = tables[table_id]['table_type']
                 # 最近可卖
-                if bot['item_type'] not in tables[table_id]['mat_status'] \
-                   and bot['item_type'] in TARGET_MAT[table_type - 1] and bot['item_type'] != 0:
+                if bot['item_type'] in map_status.valid_mat(table_id) and bot['item_type'] != 0:
                     event = Task(path, 0, table_id)
                     self.bot_tasks[bot_id].add_event(event)
                     flag = True
@@ -250,7 +271,7 @@ class State():
     def _get_path(self, target_id):
         for x in self.paths:
             if x['table_id'] == target_id:
-                return x['path']
+                return x
 
     def clear_tasks(self):
         self.tasks = []
@@ -397,6 +418,10 @@ class StateMachineScheduler(Scheduler):
         '''
         value_map = ValueMap(map_status)
         self.engine.glob_plan(map_status, value_map, self.bot_tasks)
+        for i in range(len(map_status.bots)):
+            if not self.bot_tasks[i].check_event(map_status):
+                self.bot_tasks[i].activate()
+                self.plan(i, map_status)
         for bot_id in range(len(map_status.bots)):
             if self.bot_tasks[bot_id].get_event() is None:
                 self.plan(bot_id, map_status)

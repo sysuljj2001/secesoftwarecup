@@ -142,7 +142,7 @@ class DataLoader():
     def valid_mat(self, table_id: int):
         '''获取工作台的当前可卖物品列表
         '''
-        table_type = self.map_status[table_id]['table_type']
+        table_type = self.tables[table_id]['table_type']
         valid = TARGET_MAT[table_type - 1]
         mat_stat = self.tables[table_id]['mat_status']
         return list(set(valid) - set(mat_stat))

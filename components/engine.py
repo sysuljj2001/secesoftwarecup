@@ -25,7 +25,7 @@ class Engine():
         pass
 
     def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
-        '''全局决策、重规划入口
+        '''全局决策、重规划入口，直接对所有机器人任务队列进行任务重规划
         :param map_status: 该帧地图状态，与 preprocessor.Dataloader 定义一致
         :param value_map: 势力图，使用方法 value_map.get_all() 获取一个全局价值矩阵，详情见 ValueMap 类
         '''
@@ -43,12 +43,10 @@ class AFuckingTestingEngine(Engine):
                 path, table_id = pair['path'], pair['table_id']
                 if bot.bot_at == table_id:
                     continue
-                table_type = tables[table_id]['table_type']
-                if bot.bot_item not in tables[table_id]['mat_status'] \
-                   and bot.bot_item in TARGET_MAT[table_type - 1] and bot.bot_item != 0:
+                if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
                     bot.sell(table_id)
                     flag = True
-                    if tables[table_id]['prod_status'] == 1:
+                    if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
                         bot.buy(table_id)
                     break
             if not flag:
@@ -64,11 +62,14 @@ class AFuckingTestingEngine(Engine):
                     flag = True
                     break
             if flag == False:
-                bot.buy(bot.paths[1]['table_id'])
+                #bot.buy(bot.paths[1]['table_id'])
+                if bot.bot_item == 0:
+                    bot.buy(random.sample(bot.paths, 1)[0]['table_id'])
         return bot
 
     def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
-        return
+        # 先写个简单的冲突解决方案助助兴
+        pass
 
 class MapAEngine(Engine):
     def __init__(self) -> None:
