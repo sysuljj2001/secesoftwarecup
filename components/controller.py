@@ -253,7 +253,7 @@ def glob_check(bot_infos: List, dis: float, bot_radius: float):
                     return True
         return False
 
-def repulsive_force(dist, safe_distance, k=1):
+def repulsive_force(dist, safe_distance, k=3):
     return k * (1/dist - 1/safe_distance) * (1/(dist**2))
 
 def avoid_collision(pos, vel, ang_vel, 
@@ -289,13 +289,19 @@ def avoid_collision(pos, vel, ang_vel,
 
                 # 调整角速度
                 if angle_diff > 0:
-                    new_angular_velocities[i] -= max_angular_velocity  * dt * 2
-                    new_angular_velocities[j] += max_angular_velocity  * dt * 2
+                    new_angular_velocities[i] -= max_angular_velocity  * dt
+                    new_angular_velocities[j] += max_angular_velocity  * dt
                 else:
-                    new_angular_velocities[i] += max_angular_velocity  * dt * 2
-                    new_angular_velocities[j] -= max_angular_velocity * dt * 2
+                    new_angular_velocities[i] += max_angular_velocity  * dt
+                    new_angular_velocities[j] -= max_angular_velocity * dt
+            if dist < 1.2:
+                # 已经撞在一起
+                new_angular_velocities[i] = -3
+                new_angular_velocities[j] = 3
+                new_velocities[i] = -2
+                new_velocities[j] = 2
 
-    new_velocities = [np.linalg.norm(v) for v in new_velocities]
+    new_velocities = [min(np.linalg.norm(v), max_speed) for v in new_velocities]
     return new_velocities, new_angular_velocities
 
 class PID:

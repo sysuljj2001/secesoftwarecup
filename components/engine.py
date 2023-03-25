@@ -51,7 +51,15 @@ class AFuckingTestingEngine(Engine):
                         bot.buy(table_id)
                     break
             if not flag:
-                bot.destroy()
+                # 只有第一级物品可销毁
+                if bot.bot_item <= 3:
+                    bot.destroy()
+                elif 3 < bot.bot_item <= 6:
+                    s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
+                    bot.sell(random.sample(s_tables, 1)[0]['id'])
+                else:
+                    s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
+                    bot.sell(random.sample(s_tables, 1)[0]['id'])
         else:
             flag = False
             for pair in bot.paths:
@@ -79,20 +87,36 @@ class GeneralEngine(Engine):
     
     def bot_plan(self, bot: State):
         tables = bot.map_status.tables
+        # 获取场上可卖物品列表
+        sellable_item = []
+        for table_id in range(len(tables)):
+            valid_list = bot.map_status.valid_mat(table_id)
+            [sellable_item.append(x) for x in valid_list]
         if bot.bot_item != 0:
             flag = False
             for pair in bot.paths:
                 path, table_id = pair['path'], pair['table_id']
-                if bot.bot_at == table_id:
-                    continue
                 if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
                     bot.sell(table_id)
                     flag = True
-                    if tables[table_id]['prod_status'] == 1:
+                if bot.bot_at == table_id:
+                    if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
+                        # 如果买了没地方卖的，就换一个东西买
+                        prod_type = tables[table_id]['table_type']
+                        if prod_type not in sellable_item:
+                            continue
                         bot.buy(table_id)
-                    break
+                    continue
             if not flag:
-                bot.destroy()
+                # 只有第一级物品可销毁
+                if bot.bot_item <= 3:
+                    bot.destroy()
+                elif 3 < bot.bot_item <= 6:
+                    s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
+                    bot.sell(random.sample(s_tables, 1)[0]['id'])
+                else:
+                    s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
+                    bot.sell(random.sample(s_tables, 1)[0]['id'])
         else:
             flag = False
             for pair in bot.paths:
@@ -100,7 +124,15 @@ class GeneralEngine(Engine):
                 if bot.bot_at == table_id:
                     continue
                 # 如果地图上没有工作台可以卖出该物品，不买
+                # 优先买高级物品，优先买能卖的地方多的物品
                 if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
+                    prod_type = tables[table_id]['table_type']
+                    if prod_type not in sellable_item:
+                        continue
+                    if prod_type > 3:
+                        bot.buy(table_id)
+                    if sellable_item.count(prod_type) <= 1:
+                        continue
                     bot.buy(table_id)
                     flag = True
                     break
@@ -117,10 +149,12 @@ class GeneralEngine(Engine):
         header_tasks = [bot_task.get_event() for bot_task in bot_tasks]
         # 如果要销毁，先进行全局决策
 
-        # 如果要卖，
+        # 如果要卖，先看是否有其它机器人要卖
+
+        # 如果要买，先看是否有其他机器人要买
 
         # 根据势力图重规划
-        weights = [0.3, 0.2, 0.3, 0.6, 0.5]
+        weights = [0.5, 0.6, 0.9, 0.2, 0.5]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):

@@ -30,7 +30,7 @@ if __name__ == '__main__':
         AFuckingTestingEngine(),
         GeneralEngine(),
     ]
-    scheduler = StateMachineScheduler(4, None, 3, finder=finder, engine=engines[1])
+    scheduler = StateMachineScheduler(4, None, 5, finder=finder, engine=engines[1])
     # 机器人状态，1 执行任务 2 进行决策 3 移动
     bot_status = [3] * 4
     while True:
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     
         # 四个机器人分别执行任务和控制
         for i in range(4):
-            if dataloader.frame_id % 100 == 0:
+            if dataloader.frame_id % 30 == 0:
                 scheduler.glob_plan(dataloader)
                 [x.refresh() for x in controller]
             controller[i].update_bot(bot_infos[i])
@@ -61,6 +61,7 @@ if __name__ == '__main__':
                 bot_status[i] = 1
                 # 执行任务
                 task = scheduler.activate(i)
+                scheduler.glob_plan(dataloader)
                 sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))
             elif bot_status[i] == 1:
                 # 进行下一次规划，重置控制器
@@ -99,7 +100,7 @@ if __name__ == '__main__':
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.5, 3)
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.4, 3)
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))
