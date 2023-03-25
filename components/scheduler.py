@@ -336,7 +336,7 @@ class ValueMap():
             # 原材料栏长度
             table_valid_mat = len(self.map_status.valid_mat(i))
             # 卖出平均收益
-            table_sell_val = table_sell_mean[table_type]
+            table_sell_val = table_sell_mean[table_type - 1]
             table_need_mat = len(TARGET_MAT[table_type - 1])
             ret[i] = (table_valid_mat + table_need_mat) / 1500 * table_sell_val 
         return np.tile(ret, (len(self.map_status.bots), 1))

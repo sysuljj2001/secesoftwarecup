@@ -87,11 +87,13 @@ class GeneralEngine(Engine):
     
     def bot_plan(self, bot: State):
         tables = bot.map_status.tables
-        # 获取场上可卖物品列表
+        # 获取场上可卖、可买物品列表
         sellable_item = []
+        buyable_item = []
         for table_id in range(len(tables)):
             valid_list = bot.map_status.valid_mat(table_id)
             [sellable_item.append(x) for x in valid_list]
+        [buyable_item.append(table['table_type']) if bot.map_status.prod_status(table['id']) else None for table in tables]
         if bot.bot_item != 0:
             flag = False
             for pair in bot.paths:
@@ -119,6 +121,12 @@ class GeneralEngine(Engine):
                     bot.sell(random.sample(s_tables, 1)[0]['id'])
         else:
             flag = False
+            # 如果有高级物品可以买，优先买高级物品
+            # 优先买缺的物品（可卖的高级物品）
+            if set(buyable_item) & set([4, 5, 6, 7]):
+                for table in tables:
+                    if table['prod_status'] == 1 and table['table_type'] >= 4:
+                        bot.buy(table['id'])
             for pair in bot.paths:
                 path, table_id = pair['path'], pair['table_id']
                 if bot.bot_at == table_id:
