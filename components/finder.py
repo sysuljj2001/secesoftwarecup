@@ -9,6 +9,17 @@ class SimpleFinder():
     def __init__(self) -> None:
         pass
 
+    @staticmethod
+    def _dis(p1_x, p1_y, p2_x, p2_y):
+        return round(math.hypot(p1_x - p2_x, p1_y - p2_y))
+
+    def planning(self, sx, sy, gx, gy, target_id):
+        res = [
+            {'path': [gx_, gy_] * self._dis(gx_, gy_, sx, sy), 'table_id': table_id}
+            for gx_, gy_, table_id in zip(gx, gy, target_id)
+        ]
+        return res
+
 # 创建一个类
 class Dijkstra:
     # 初始化

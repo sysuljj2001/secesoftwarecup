@@ -1,6 +1,6 @@
 #!/bin/bash
 import sys
-from components.finder import Dijkstra
+from components.finder import Dijkstra, SimpleFinder
 from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller, RVO_Contorller, glob_check, avoid_collision
@@ -25,7 +25,8 @@ if __name__ == '__main__':
     dataloader.init()
     finish()
     controller = [PID_Controller() for _ in range(4)] #调用机器人控制类
-    finder = Dijkstra([0, 50], [0, 50], 2, 0.45)
+    #finder = Dijkstra([0, 50], [0, 50], 1.25, 0.45)
+    finder = SimpleFinder()
     engines = [
         AFuckingTestingEngine(),
         GeneralEngine(),
@@ -46,22 +47,20 @@ if __name__ == '__main__':
         vel, ang_vel = np.zeros(4), np.zeros(4)
         # 2023/03/22 feature: 完成一个机器人的 PID 控制
         # 2023/03/22 future: 重构代码
-        if dataloader.frame_id == 1:
+        if dataloader.frame_id % 10 == 0:
             scheduler.glob_plan(dataloader)
-            [x.refresh() for x in controller]
     
         # 四个机器人分别执行任务和控制
         for i in range(4):
-            if dataloader.frame_id % 30 == 0:
-                scheduler.glob_plan(dataloader)
-                [x.refresh() for x in controller]
+            #if dataloader.frame_id % 10 == 0:
+            #    scheduler.glob_plan(dataloader)
+            #    [x.refresh() for x in controller]
             controller[i].update_bot(bot_infos[i])
             ret = scheduler.check_finish(i, dataloader)
             if ret and bot_status[i] == 3:
                 bot_status[i] = 1
                 # 执行任务
                 task = scheduler.activate(i)
-                scheduler.glob_plan(dataloader)
                 sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))
             elif bot_status[i] == 1:
                 # 进行下一次规划，重置控制器
@@ -72,7 +71,7 @@ if __name__ == '__main__':
                 event = scheduler.feedback(i)
 
                 s = dataloader.table_coord(event.target_id)
-                logging.info(f'botid: {i}, targetid: {event.target_id}, targetpos: {s}, action: {event.action}')
+                logging.info(f'frame_id: {dataloader.frame_id}, botid: {i}, targetid: {event.target_id}, targetpos: {s}, targettype: {dataloader.table_type(event.target_id)}, action: {event.action}')
                 if event.action == 2:
                     # 如果遭遇销毁指令，跳过该帧
                     bot_status[i] = 3
@@ -100,7 +99,7 @@ if __name__ == '__main__':
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.4, 3)
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.2, 3)
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))

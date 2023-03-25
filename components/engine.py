@@ -95,58 +95,85 @@ class GeneralEngine(Engine):
             [sellable_item.append(x) for x in valid_list]
         [buyable_item.append(table['table_type']) if bot.map_status.prod_status(table['id']) else None for table in tables]
         if bot.bot_item != 0:
-            flag = False
-            for pair in bot.paths:
-                path, table_id = pair['path'], pair['table_id']
-                if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
-                    bot.sell(table_id)
-                    flag = True
-                if bot.bot_at == table_id:
+            # 卖
+            # 优先卖到原材料栏快满的
+            # 如果有高级物品可以卖，优先卖高级物品
+            if len(set(sellable_item) & set([4, 5, 6, 7])) > 0:
+                s_tables = sorted(tables, key=lambda x : x['table_type'])
+                s_tables.reverse()
+                for table in s_tables:
+                    if table['prod_status'] == 1 and table['table_type'] >= 7:
+                        bot.sell(table['id'])
+                        break
+                    elif table['prod_status'] == 1 and table['table_type'] >= 4:
+                        bot.sell(table['id'])
+                        break
+                    elif table['prod_status'] == 1 and table['table_type'] in sellable_item:
+                        bot.sell(table['id'])
+                        break
+            else:
+                flag = False
+                s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
+                s_tables.reverse()
+                for table in tables:
+                    table_id = table['id']
+                    if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
+                        if bot.map_status.table_type(table_id) == 9:
+                            continue
+                        bot.sell(table_id)
+                        flag = True
+                    if bot.bot_at == table_id:
+                        if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
+                            # 如果买了没地方卖的，就换一个东西买
+                            prod_type = tables[table_id]['table_type']
+                            if prod_type not in sellable_item:
+                                continue
+                            bot.buy(table_id)
+                if not flag:
+                    # 只有第一级物品可销毁
+                    if bot.bot_item <= 3:
+                        bot.destroy()
+                    elif 3 < bot.bot_item <= 6:
+                        s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
+                        if len(s_tables):
+                            bot.sell(random.sample(s_tables, 1)[0]['id'])
+                    else:
+                        s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
+                        if len(s_tables):
+                            bot.sell(random.sample(s_tables, 1)[0]['id'])
+        else:
+            # 如果有高级物品可以买，优先买高级物品
+            # 优先买缺的物品（可卖的高级物品）
+            if len(set(buyable_item) & set([4, 5, 6, 7])) > 0:
+                s_tables = sorted(tables, key=lambda x : x['table_type'])
+                s_tables.reverse()
+                for table in tables:
+                    if table['prod_status'] == 1 and table['table_type'] >= 7:
+                        bot.buy(table['id'])
+                        break
+                    elif table['prod_status'] == 1 and table['table_type'] >= 4:
+                        logging.info('buy')
+                        bot.buy(table['id'])
+                        break
+                    elif table['prod_status'] == 1 and table['table_type'] in sellable_item:
+                        bot.buy(table['id'])
+                        break
+            else:
+                for pair in bot.paths:
+                    path, table_id = pair['path'], pair['table_id']
+                    if bot.bot_at == table_id:
+                        continue
+                    # 如果地图上没有工作台可以卖出该物品，不买
+                    # 如果地图上有高级物品，不买低级物品
+                    # 优先买高级物品，优先买能卖的地方多的物品
                     if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
-                        # 如果买了没地方卖的，就换一个东西买
                         prod_type = tables[table_id]['table_type']
                         if prod_type not in sellable_item:
                             continue
+                        if sellable_item.count(prod_type) <= 1:
+                            continue
                         bot.buy(table_id)
-                    continue
-            if not flag:
-                # 只有第一级物品可销毁
-                if bot.bot_item <= 3:
-                    bot.destroy()
-                elif 3 < bot.bot_item <= 6:
-                    s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
-                    bot.sell(random.sample(s_tables, 1)[0]['id'])
-                else:
-                    s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
-                    bot.sell(random.sample(s_tables, 1)[0]['id'])
-        else:
-            flag = False
-            # 如果有高级物品可以买，优先买高级物品
-            # 优先买缺的物品（可卖的高级物品）
-            if set(buyable_item) & set([4, 5, 6, 7]):
-                for table in tables:
-                    if table['prod_status'] == 1 and table['table_type'] >= 4:
-                        bot.buy(table['id'])
-            for pair in bot.paths:
-                path, table_id = pair['path'], pair['table_id']
-                if bot.bot_at == table_id:
-                    continue
-                # 如果地图上没有工作台可以卖出该物品，不买
-                # 优先买高级物品，优先买能卖的地方多的物品
-                if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
-                    prod_type = tables[table_id]['table_type']
-                    if prod_type not in sellable_item:
-                        continue
-                    if prod_type > 3:
-                        bot.buy(table_id)
-                    if sellable_item.count(prod_type) <= 1:
-                        continue
-                    bot.buy(table_id)
-                    flag = True
-                    break
-            if flag == False:
-                if bot.bot_item == 0:
-                    bot.buy(random.sample(bot.paths, 1)[0]['table_id'])
+                        break
         return bot
     
     def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
@@ -161,8 +188,10 @@ class GeneralEngine(Engine):
 
         # 如果要买，先看是否有其他机器人要买
 
+        # 优先买最紧缺的物品，填补物品
+
         # 根据势力图重规划
-        weights = [0.5, 0.6, 0.9, 0.2, 0.5]
+        weights = [0.9, 0.6, 0.5, 0.2, 0.5]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):
@@ -209,16 +238,18 @@ class GeneralEngine(Engine):
                             # 如果可以买
                             if bot['item_type'] == 0 and table['prod_status'] == 1:
                                 event = pack_task(table_id, 1)
-                                bot_tasks[bot_id].add_event(event)
+                                bot_tasks[ad_bot].activate()
+                                bot_tasks[ad_bot].add_event(event)
                                 flag = True
-                                logging.info('success')
+                                #logging.info(f'{table_id}, {ad_target}')
                                 break
-                        if action == 2:
+                        if action == 0:
                             # 如果可以卖
                             if bot['item_type'] in map_status.valid_mat(table_id) and bot['item_type'] != 0:
                                 event = pack_task(table_id, 0)
-                                bot_tasks[bot_id].add_event(event)
-                                logging.info('success')
+                                bot_tasks[ad_bot].activate()
+                                bot_tasks[ad_bot].add_event(event)
+                                #logging.info('success')
                                 flag = True
                                 break
                     
