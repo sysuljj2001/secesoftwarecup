@@ -289,11 +289,11 @@ def avoid_collision(pos, vel, ang_vel,
 
                 # 调整角速度
                 if angle_diff > 0:
-                    new_angular_velocities[i] -= max_angular_velocity  * dt
-                    new_angular_velocities[j] += max_angular_velocity  * dt
+                    new_angular_velocities[i] -= max_angular_velocity  * dt * 2
+                    new_angular_velocities[j] += max_angular_velocity  * dt * 2
                 else:
-                    new_angular_velocities[i] += max_angular_velocity  * dt
-                    new_angular_velocities[j] -= max_angular_velocity * dt
+                    new_angular_velocities[i] += max_angular_velocity  * dt * 2
+                    new_angular_velocities[j] -= max_angular_velocity * dt * 2
 
     new_velocities = [np.linalg.norm(v) for v in new_velocities]
     return new_velocities, new_angular_velocities

@@ -4,7 +4,7 @@ from components.finder import Dijkstra
 from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller, RVO_Contorller, glob_check, avoid_collision
-from components.engine import MapAEngine, AFuckingTestingEngine
+from components.engine import MapAEngine, AFuckingTestingEngine, GeneralEngine
 import logging
 import numpy as np
 
@@ -28,8 +28,9 @@ if __name__ == '__main__':
     finder = Dijkstra([0, 50], [0, 50], 2, 0.45)
     engines = [
         AFuckingTestingEngine(),
+        GeneralEngine(),
     ]
-    scheduler = StateMachineScheduler(4, None, 2, finder=finder, engine=engines[0])
+    scheduler = StateMachineScheduler(4, None, 3, finder=finder, engine=engines[1])
     # 机器人状态，1 执行任务 2 进行决策 3 移动
     bot_status = [3] * 4
     while True:

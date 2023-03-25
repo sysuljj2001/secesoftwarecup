@@ -190,8 +190,6 @@ class QTableScheduler(Scheduler):
         pass
 
 # 贪心调度器
-
-
 class SimpleScheduler(Scheduler):
     def __init__(self, bot_num, metadata, queue_len, engine=None, finder=None) -> None:
         super().__init__(bot_num, metadata, queue_len, engine, finder)
@@ -271,7 +269,7 @@ class State():
     def _get_path(self, target_id):
         for x in self.paths:
             if x['table_id'] == target_id:
-                return x
+                return x['path']
 
     def clear_tasks(self):
         self.tasks = []
@@ -292,7 +290,7 @@ class State():
         '''在当前地图状态下将{销毁自身携带的物品}加入一个bot的任务队列并置于首端
         '''
         bot_coord = self.map_status.bot_coord(self.bot_id)
-        self.tasks.insert(0, Task({'path': bot_coord, 'table_id': 0}, 2, -1))
+        self.tasks.insert(0, Task([bot_coord], 2, -1))
 
 class ValueMap():
     def __init__(self, map_status: DataLoader) -> None:
@@ -311,16 +309,18 @@ class ValueMap():
         :item_value : 机器人携带物品势力图
         '''
         func_list = [
-            self.mat_value,
-            self.prod_value,
-            self.left_time_value,
-            self.dis_value,
-            self.item_value,
+            self.mat_value(),
+            self.prod_value(),
+            self.left_time_value(),
+            self.dis_value(),
+            self.item_value(),
         ]
         res = np.zeros((len(self.map_status.bots), 
                         self.map_status.table_num))
-        for i, func in enumerate(func_list):
-            res += func() * weight[i]
+        #for i in range(5):
+        #    logging.info(func_list[i])
+        for i, ret in enumerate(func_list):
+            res += ret * weight[i]
         return res
 
     def mat_value(self):
@@ -328,7 +328,7 @@ class ValueMap():
         """
         table_num = self.map_status.table_num
         # 每种工作台的卖出平均收益
-        table_sell_mean = [np.mean([SELL_REWARD[mat - 1] for mat in recepie]) for recepie in TARGET_MAT]
+        table_sell_mean = [np.mean([SELL_REWARD[mat - 1] for mat in recepie]) if len(recepie) else 0 for recepie in TARGET_MAT]
         ret = np.zeros(table_num)
         for i in range(table_num):
             # 对每个工作台计算效益
@@ -338,7 +338,7 @@ class ValueMap():
             # 卖出平均收益
             table_sell_val = table_sell_mean[table_type]
             table_need_mat = len(TARGET_MAT[table_type - 1])
-            ret[i] = (table_valid_mat + table_need_mat) * table_sell_val / 2500
+            ret[i] = (table_valid_mat + table_need_mat) / 1500 * table_sell_val 
         return np.tile(ret, (len(self.map_status.bots), 1))
 
     def prod_value(self):
@@ -349,7 +349,10 @@ class ValueMap():
         for i in range(table_num):
             table_type = self.map_status.table_type(i)
             prod_stat = self.map_status.prod_status(i)
-            ret[i] = np.exp(prod_stat) * (SELL_REWARD[table_type - 1] - BUY_COST[table_type - 1]) / 500
+            if table_type > 7:
+                ret[i] = (np.sum(SELL_REWARD) - np.sum(BUY_COST)) / 1000
+            else:
+                ret[i] = np.exp(prod_stat) * (SELL_REWARD[table_type - 1] - BUY_COST[table_type - 1]) / 500
         return np.tile(ret, (len(self.map_status.bots), 1))
 
     def left_time_value(self):
@@ -360,8 +363,10 @@ class ValueMap():
         for i in range(table_num):
             table_type = self.map_status.table_type(i)
             left_time = self.map_status.time_left(i)
-            ret[i] += np.log(PROCESS_TIME[table_type - 1] - left_time)
-            ret[i] += np.log(PROCESS_TIME[table_type - 1] - left_time)
+            if table_type > 7:
+                ret[i] += 100
+            else:
+                ret[i] += np.log(PROCESS_TIME[table_type - 1] - left_time)
         return np.tile(ret, (len(self.map_status.bots), 1))
 
     def dis_value(self):
@@ -375,16 +380,17 @@ class ValueMap():
             for t_i in range(table_num):
                 table_x, table_y = self.map_status.table_coord(t_i)
                 ret[b_i, t_i] = MAP_SIZE * np.sqrt(2) - math.hypot(bot_x - table_x, bot_y - table_y)
+        return ret
 
     def item_value(self):
         '''机器人携带物品势力图：机器人携带的物品价值越高、时间价值系数越大、碰撞价值系数越大效益越大
         '''
         bot_num = len(self.map_status.bots)
-        ret = np.zeros(bot_num)
+        ret = np.zeros((bot_num, 1))
         for i in range(bot_num):
             item_type = self.map_status.bot_item(i)
             time_coef, coll_coef = self.map_status.bot_coef(i)
-            ret[i] = SELL_REWARD[item_type - 1] * time_coef * coll_coef / 4000
+            ret[i, 0] = SELL_REWARD[item_type - 1] * time_coef * coll_coef / 400
         return np.tile(ret, (1, self.map_status.table_num))
 
 # 状态机+决策引擎+势力图+经济系统贪心
@@ -417,7 +423,7 @@ class StateMachineScheduler(Scheduler):
         （3）计算势力图
         '''
         value_map = ValueMap(map_status)
-        self.engine.glob_plan(map_status, value_map, self.bot_tasks, self.plan)
+        self.engine.glob_plan(map_status, value_map, self.bot_tasks)
         for i in range(len(map_status.bots)):
             if not self.bot_tasks[i].check_event(map_status):
                 self.bot_tasks[i].activate()

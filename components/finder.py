@@ -1,6 +1,5 @@
 import math
 import time
-import matplotlib.pyplot as plt
 import numpy as np
 from typing import List
 min_set = 10
@@ -75,12 +74,7 @@ class Dijkstra:
 
             # 绘图
             """"""
-            if show_animation:
-                # 网格索引转换为真实坐标
-                plt.plot(self.calc_position(current.x, self.min_x),
-                         self.calc_position(current.y, self.min_y), 'xc')
-                plt.pause(0.0001)
-            
+
             # 判断是否是终点，如果选出来的损失最小的点是终点
             if type(gx) != list:
                 if current.x == goal_node.x and current.y == goal_node.y:
@@ -268,11 +262,6 @@ def main():
     #for i in range(0, 40):      ox.append(40.0); oy.append(60 - i)  # 右围栏
 
     # 绘图
-    if show_animation:
-        plt.plot(gx, gy, '.k')  # 障碍物黑色
-        plt.plot(sx, sy, 'og')  # 起点绿色
-        plt.grid(True)
-        plt.axis('equal')  # 坐标轴刻度间距等长
 
     # 实例化，传入障碍物，网格大小
     dijkstra = Dijkstra(ox, oy, grid_size, robot_radius)
