@@ -292,7 +292,7 @@ class State():
         '''在当前地图状态下将{销毁自身携带的物品}加入一个bot的任务队列并置于首端
         '''
         bot_coord = self.map_status.bot_coord(self.bot_id)
-        self.tasks.insert(0, Task([bot_coord], 2, -1))
+        self.tasks.insert(0, Task({'path': bot_coord, 'table_id': 0}, 2, -1))
 
 class ValueMap():
     def __init__(self, map_status: DataLoader) -> None:
@@ -417,7 +417,7 @@ class StateMachineScheduler(Scheduler):
         （3）计算势力图
         '''
         value_map = ValueMap(map_status)
-        self.engine.glob_plan(map_status, value_map, self.bot_tasks)
+        self.engine.glob_plan(map_status, value_map, self.bot_tasks, self.plan)
         for i in range(len(map_status.bots)):
             if not self.bot_tasks[i].check_event(map_status):
                 self.bot_tasks[i].activate()

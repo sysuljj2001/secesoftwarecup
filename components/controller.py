@@ -24,6 +24,7 @@ class RVO_Contorller():
         self.bots = []
         self.targets = []
         self.t = 0
+        self.freeze = False
         self.end_time = end_time
         self.max_v = max_v
         self.cache = { 'v': 0, 'w': 0 }
@@ -179,7 +180,7 @@ class RVO_Contorller():
 
     def RVO_update(self, desire_V):
         V_current = [bot['v'] for bot in self.bots]
-        Robot_Radius = self.bot_r + 0.1  # Set a virtual wall around robot
+        Robot_Radius = self.bot_r + 0.1
         V_opt = list(V_current)
         X = [bot['coord'] for bot in self.bots]
         for i in range(len(X)):
@@ -220,16 +221,17 @@ class RVO_Contorller():
         v_list = []
         w_list = []
         for j in range(len(self.bots)):
-            theta = round(np.arctan2(opt_v[j][1], opt_v[j][0]) / np.pi, 3)
+            theta = np.arctan2(opt_v[j][1], opt_v[j][0])
             liner_v = np.sqrt(opt_v[j][0] ** 2 + opt_v[j][1] ** 2)
             v_list.append(liner_v)
-            w_pi = (self.bots[j]['p'] - theta) #弧度制配合
-            w = w_pi * 9
-            if w_pi > 1/3:
-                w = 3
-            elif w_pi < -1/3:
-                w = -3
-            w_list.append(w * np.pi / 3)
+            w = (theta - self.bots[j]['p']) #弧度制配合
+            bot_c, bot_p = self.bots[j]['coord'], self.bots[j]['p']
+            #logging.info(f'bot {j} at {bot_c} face {np.rad2deg(bot_p)}, to: {self.targets[j]}, delta: {np.rad2deg(w)}')
+            if w > np.pi:
+                w = np.pi
+            elif w < -np.pi:
+                w = -np.pi
+            w_list.append(w)
         self.cache = {'v': v_list, 'w': w_list}
         return {'v': v_list, 'w': w_list}
 
@@ -283,6 +285,8 @@ class PID_Controller():
         dx = goal[0] - self.bot_info['coord'][0]
         dy = goal[1] - self.bot_info['coord'][1]
         angle_to_goal = math.atan2(dy, dx)
+        if np.abs(angle_to_goal - self.bot_info['p']) > np.pi:
+            return np.pi * 2 + angle_to_goal - self.bot_info['p']
         return angle_to_goal - self.bot_info['p']
     
     def update_path(self, paths):
@@ -306,7 +310,6 @@ class PID_Controller():
         '''
         distance_to_goal = self.distance_to_goal()
         angle_to_goal = self.angle_to_goal()
-
         if distance_to_goal < 0.2:
             self.current_path_index += 1
             if self.current_path_index >= len(self.paths):
@@ -316,8 +319,8 @@ class PID_Controller():
         angular_velocity = self.pid.update(angle_to_goal, dt)
         if linear_velocity > 6: linear_velocity = 6
         elif linear_velocity < -2: linear_velocity = -2
-        if angular_velocity > 3:angular_velocity = 3
-        elif angular_velocity < -3:angular_velocity = -3
+        if angular_velocity > 3: angular_velocity = 3
+        elif angular_velocity < -3: angular_velocity = -3
 
         ''''''
         if angle_to_goal >= np.pi:

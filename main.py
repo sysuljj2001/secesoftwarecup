@@ -51,19 +51,18 @@ if __name__ == '__main__':
         
         coll_controller.update_bots(dataloader)
         # 是否启用 rvo
-        is_rvo = coll_controller.glob_check(1)
-        is_rvo = False
-        if is_rvo:
+        is_rvo = coll_controller.glob_check(50)
+        if is_rvo and coll_controller.freeze == False:
             for i in range(4):
                 if len(scheduler.bot_tasks[i].task_queue) <= 0:
                     scheduler.plan(i, dataloader)
             paths = [task.path for task in scheduler.feedback_all()]
-            logging.info(paths)
             coll_controller.update_targets(dataloader, paths)
             rvo_res = coll_controller.handle(0.015)
             if rvo_res is None:
-                coll_controller.refresh()
+                coll_controller.freeze = True
                 is_rvo = False
+                coll_controller.refresh()
         # 四个机器人分别执行任务和控制
         for i in range(4):
             if dataloader.frame_id % 100 == 0:
@@ -98,24 +97,27 @@ if __name__ == '__main__':
                 if len(scheduler.bot_tasks[i].task_queue) <= 0:
                     scheduler.plan(i, dataloader)
                     scheduler.glob_plan(dataloader)
-                #if not scheduler.check_valid(i, dataloader):
-                #    scheduler.activate(i)
-                #    scheduler.plan(i, dataloader)
                 
                 event = scheduler.feedback(i)
                 if event is None: continue
                 path = [dataloader.table_coord(event.target_id)]  
                 controller[i].update_path(path)
             # 判断使用哪一个控制器
-            if not is_rvo:    
+            if not is_rvo or coll_controller.freeze == True:
                 res = controller[i].handle(0.015) # 当前帧所需控制指令
+                if coll_controller.check_time(1):
+                    coll_controller.freeze = False
+                    coll_controller.refresh()
             else:
-                res = rvo_res['v'][i], rvo_res['w'][i]
+                if rvo_res is not None:
+                    res = rvo_res['v'][i], rvo_res['w'][i]
+                    #logging.info(f'{res}, frame: {dataloader.frame_id}')
+                else: continue
             if res is None: 
                 controller[i].refresh()
                 continue
-            sys.stdout.write('forward %d %d\n' % (i,res[0]))
-            sys.stdout.write('rotate %d %f\n' % (i,res[1]))
+            sys.stdout.write('forward %d %d\n' % (i, res[0]))
+            sys.stdout.write('rotate %d %f\n' % (i, res[1]))
         finish()
 
 

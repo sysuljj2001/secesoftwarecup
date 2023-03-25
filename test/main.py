@@ -73,7 +73,7 @@ class RVO_controller():#满足切入RVO条件后启用该函数
             或重启PID进程
         """
 import matplotlib.pyplot as plt
-Robot = [[10*i,10*i] for i in range(4)]
+Robot = [[10, 20], [10, 25], [10, 30], [10, 35]]
 V = [[0, 0] for i in range(len(Robot))]
 P = [0 for i in range(len(Robot))]
 workstation = [[50-10*i,50-10*i] for i in range(4)]

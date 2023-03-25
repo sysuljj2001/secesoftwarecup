@@ -6,7 +6,7 @@ import numpy as np
 import random
 from components.scheduler import Task, TaskQueue, ValueMap, State
 from components.preprocess import DataLoader, TARGET_MAT, BUY_COST, SELL_REWARD, PROCESS_TIME, MAP_SIZE
-from typing import List
+from typing import List, Callable
 import logging
 
 class Engine():
@@ -67,7 +67,8 @@ class AFuckingTestingEngine(Engine):
                     bot.buy(random.sample(bot.paths, 1)[0]['table_id'])
         return bot
 
-    def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
+    def glob_plan(self, map_status: DataLoader, value_map: ValueMap,
+                  bot_tasks: List[TaskQueue], replan_bot: Callable):
         # 先写个简单的冲突解决方案助助兴
         pass
 
