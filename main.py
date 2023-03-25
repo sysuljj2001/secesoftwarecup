@@ -47,7 +47,7 @@ if __name__ == '__main__':
         vel, ang_vel = np.zeros(4), np.zeros(4)
         # 2023/03/22 feature: 完成一个机器人的 PID 控制
         # 2023/03/22 future: 重构代码
-        if dataloader.frame_id % 10 == 0:
+        if dataloader.frame_id % 20 == 0:
             scheduler.glob_plan(dataloader)
     
         # 四个机器人分别执行任务和控制
@@ -69,6 +69,7 @@ if __name__ == '__main__':
                 scheduler.plan(i, dataloader)
                 scheduler.glob_plan(dataloader)
                 event = scheduler.feedback(i)
+                if event is None: continue
 
                 s = dataloader.table_coord(event.target_id)
                 logging.info(f'frame_id: {dataloader.frame_id}, botid: {i}, targetid: {event.target_id}, targetpos: {s}, targettype: {dataloader.table_type(event.target_id)}, action: {event.action}')
@@ -99,7 +100,7 @@ if __name__ == '__main__':
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        #vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.2, 3)
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.2, 3)
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))
