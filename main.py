@@ -25,8 +25,15 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
-    controller = [PID_Controller(kp=[4, 8.5], ki=[0.001, 0.1], kd=[0.007, 0.5]) for _ in range(4)] #调用机器人控制类
-    #finder = Dijkstra([0, 50], [0, 50], 1.25, 0.45)
+    pid_param = [
+        [[4, 8.5], [0.001, 0.1], [0.006, 0.5]],
+        [[4, 3.5], [0.001, 0.1], [0.007, 0.5]],
+        [[4, 3.5], [0.0007, 0.01], [0.007, 0.001]],
+        [[4, 3.5], [0.0007, 0.01], [0.007, 0.001]],
+    ]
+    index = K.index(dataloader.table_num)
+
+    controller = [PID_Controller(kp=pid_param[index][0], ki=pid_param[index][1], kd=pid_param[index][2]) for _ in range(4)] #调用机器人控制类
     finder = SimpleFinder()
     engines = [
         GeneralEngine(),
@@ -35,7 +42,7 @@ if __name__ == '__main__':
         MapCEngine(),
         MapDEngine(),
     ]
-    index = K.index(dataloader.table_num)
+    
     scheduler = StateMachineScheduler(4, None, 5, finder=finder, engine=engines[index + 1])
     # 机器人状态，1 执行任务 2 进行决策 3 移动
     bot_status = [3] * 4
