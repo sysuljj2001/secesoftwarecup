@@ -592,13 +592,7 @@ class MapBEngine(Engine):
                             break
                 ss_tables = list(filter(lambda x : x['table_type'] == 6, s_tables))
                 for table in ss_tables:
-                    if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [0, 1]:
-                        bot.sell(table['id'])
-                        flag = True
-                        break
-                    ss_tables = list(filter(lambda x : x['table_type'] == 5, s_tables))
-                for table in ss_tables:
-                    if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [2, 3]:
+                    if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [0, 1, 2]:
                         bot.sell(table['id'])
                         flag = True
                         break
@@ -844,10 +838,6 @@ class MapCEngine(Engine):
                     bot.buy(table_id)
                     flag = True
                     break
-            if flag == False:
-                #bot.buy(bot.paths[1]['table_id'])
-                if bot.bot_item == 0:
-                    bot.buy(random.sample(bot.paths, 1)[0]['table_id'])
         return bot
     
     def glob_plan(self, map_status: DataLoader, value_map: ValueMap, bot_tasks: List[TaskQueue]):
@@ -873,7 +863,7 @@ class MapCEngine(Engine):
         # 优先买最紧缺的物品，填补物品
 
         # 根据势力图重规划
-        weights = [0.4, 0.9, 0.5, 0.9, 0.6]
+        weights = [0.4, 0.8, 0.5, 3.5, 0.9]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):
@@ -1099,7 +1089,7 @@ class MapDEngine(Engine):
         # 优先买最紧缺的物品，填补物品
 
         # 根据势力图重规划
-        weights = [0.9, 0.5, 0.5, 1.2, 0.9]
+        weights = [0.6, 1.4, 0.7, 0.4, 1.4]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):

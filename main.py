@@ -27,12 +27,12 @@ if __name__ == '__main__':
     finish()
     pid_param = [
         [[4, 8.5], [0.001, 0.1], [0.006, 0.5]],
-        [[4, 3.5], [0.001, 0.1], [0.007, 0.5]],
-        [[4, 3.5], [0.0007, 0.01], [0.007, 0.001]],
+        [[4, 8.5], [0.005, 0.05], [0.007, 0.4]],
+        [[4.5, 9], [0.0005, 0.05], [0.008, 0.004]],
         [[4, 3.5], [0.0007, 0.01], [0.007, 0.001]],
     ]
     coll_param = [
-        [0.1, 1.8], [0.1, 1.8], [0.1, 1.8], [0.1, 1.8]
+        [0.1, 1.8], [0.1, 2], [0.1, 2.5], [0.1, 1.8]
     ]
     index = K.index(dataloader.table_num)
 
@@ -77,7 +77,8 @@ if __name__ == '__main__':
                 # 执行任务
                 task = scheduler.activate(i)
                 if dataloader.frame_id >= 8800 and task.action == 1: continue
-                if dataloader.frame_id >= 8500 and task.action == 1 and dataloader.tables[task.target_id]['table_type'] in [1, 2, 3]:
+                if dataloader.frame_id >= 8600 and task.action == 1 and dataloader.tables[task.target_id]['table_type'] in [1, 2, 3]:
+                    scheduler.glob_plan(dataloader)
                     continue
                     # 不买了
                 sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))

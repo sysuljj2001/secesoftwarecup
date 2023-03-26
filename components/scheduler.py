@@ -365,8 +365,10 @@ class ValueMap():
             left_time = self.map_status.time_left(i)
             if table_type > 7:
                 ret[i] += 100
+            elif table_type < 4:
+                ret[i] += 10
             else:
-                ret[i] += np.log(PROCESS_TIME[table_type - 1] - left_time + 5)
+                ret[i] += np.log(PROCESS_TIME[table_type - 1] - left_time + 1)
         return np.tile(ret, (len(self.map_status.bots), 1))
 
     def dis_value(self):
