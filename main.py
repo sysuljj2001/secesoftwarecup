@@ -4,11 +4,12 @@ from components.finder import Dijkstra, SimpleFinder
 from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller, RVO_Contorller, glob_check, avoid_collision
-from components.engine import MapAEngine, AFuckingTestingEngine, GeneralEngine
+from components.engine import MapAEngine, AFuckingTestingEngine, GeneralEngine, MapBEngine, MapCEngine, MapDEngine
 import logging
 import numpy as np
 
 logging.basicConfig(level=logging.DEBUG)
+K = [43, 25, 47, 18]
 
 def read_util_ok():
     while input() != "OK":
@@ -28,10 +29,14 @@ if __name__ == '__main__':
     #finder = Dijkstra([0, 50], [0, 50], 1.25, 0.45)
     finder = SimpleFinder()
     engines = [
-        AFuckingTestingEngine(),
         GeneralEngine(),
+        MapAEngine(),
+        MapBEngine(),
+        MapCEngine(),
+        MapDEngine(),
     ]
-    scheduler = StateMachineScheduler(4, None, 5, finder=finder, engine=engines[1])
+    index = K.index(dataloader.table_num)
+    scheduler = StateMachineScheduler(4, None, 5, finder=finder, engine=engines[index + 1])
     # 机器人状态，1 执行任务 2 进行决策 3 移动
     bot_status = [3] * 4
     while True:
