@@ -294,18 +294,18 @@ def avoid_collision(pos, vel, ang_vel,
                 else:
                     new_angular_velocities[i] += max_angular_velocity  * dt
                     new_angular_velocities[j] -= max_angular_velocity * dt
-            if dist < 1.5:
+            if dist < 1.2:
                 # 已经撞在一起
                 x_offset = np.abs(np.cos(np.arctan2(direction[1], direction[0])) * safe_distance)
                 delta_x = np.abs(pos[i][0] - x_offset)
                 new_velocities[i] *= -2
                 new_velocities[j] *= -2
                 if delta_x < x_offset:
-                    new_angular_velocities[i] = 1.2
-                    new_angular_velocities[j] = 1.2
+                    new_angular_velocities[i] = 2
+                    new_angular_velocities[j] = -2
                 else:
-                    new_angular_velocities[i] = 1.1
-                    new_angular_velocities[j] = 1.1
+                    new_angular_velocities[i] = 1.5
+                    new_angular_velocities[j] = -1.5
                 if np.linalg.norm(direction) < 0.5:
                     # 几乎同向
                     new_angular_velocities[i] *= -1

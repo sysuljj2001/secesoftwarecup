@@ -9,7 +9,7 @@ import logging
 import numpy as np
 
 logging.basicConfig(level=logging.DEBUG)
-K = [43, 25, 47, 18]
+K = [43, 25, 50, 18]
 
 def read_util_ok():
     while input() != "OK":
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
-    controller = [PID_Controller(kp=[4, 3.9], ki=[0.0007, 0.005], kd=[0.0005, 0.001]) for _ in range(4)] #调用机器人控制类
+    controller = [PID_Controller(kp=[4, 8.5], ki=[0.001, 0.1], kd=[0.007, 0.5]) for _ in range(4)] #调用机器人控制类
     #finder = Dijkstra([0, 50], [0, 50], 1.25, 0.45)
     finder = SimpleFinder()
     engines = [
@@ -105,7 +105,7 @@ if __name__ == '__main__':
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.35, 5.5)
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.1, 1.8)
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))

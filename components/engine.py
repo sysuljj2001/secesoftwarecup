@@ -322,93 +322,89 @@ class MapAEngine(Engine):
             [sellable_item.append(x) for x in valid_list]
         [buyable_item.append(table['table_type']) if bot.map_status.prod_status(table['id']) else None for table in tables]
         [bot_item_list.append(bot['item_type']) if bot['item_type'] != 0 else 0 for bot in bot.map_status.bots]
+        desire_table_mat_list = [{'id':  table['id'],'status': table['mat_status']} for table \
+                                   in bot.map_status.tables if table['table_type'] == 7] # 7 号工作台的原材料栏情况
+        s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
+        s_tables.reverse()
         if bot.bot_item != 0:
             # 卖
-            # 优先卖到原材料栏快满的
-            # 如果有高级物品可以卖，优先卖高级物品
+            # 直接按顺序填 7 号工作台
+            # 先卖高级物品，找到第一个材料不满的 7 号工作台的 id
+            index = desire_table_mat_list[0]['id']
+            for mat in desire_table_mat_list:
+                if len(mat['status']) != 3 and tables[mat['id']]['remain_time'] == -1:
+                    index = mat['id']
+                    break
+            # 判断7缺失的材料，优先令当前机器人去对应工作台卖
+            desire_mat = bot.map_status.valid_mat(index)
+            target_table_type = desire_mat[0]
+            desire_raw = TARGET_MAT[target_table_type - 1]
+            s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
             if len(set(sellable_item) & set([4, 5, 6, 7])) > 0:
                 # 地图 1 生产优先级 5, 6, 4，直接指定两个机器人优先卖到 5 的工作台
                 flag  = False
                 s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
                 s_tables.reverse()
-                ss_tables = list(filter(lambda x : x['table_type'] == 5, s_tables))
+                ss_tables = list(filter(lambda x : x['table_type'] == 6, s_tables))
                 for table in ss_tables:
                     if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [0, 1]:
                         bot.sell(table['id'])
-                        break
-                for table in s_tables:
-                    if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id not in [0, 1]:
                         flag = True
-                        if table['table_type'] == 9:
-                            if bot.bot_item >= 7:
+                        break
+                if not flag:
+                    ss_tables = list(filter(lambda x : x['table_type'] == 5, s_tables))
+                    for table in ss_tables:
+                        if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [0, 1]:
+                            bot.sell(table['id'])
+                            flag = True
+                            break
+                # 如果机器人拿的材料是紧缺高级材料，直接去紧缺工作台卖
+                if bot.bot_item in desire_mat and not flag:
+                    bot.sell(index)
+                    flag = True
+                if not flag:
+                    for table in s_tables:
+                        if bot.bot_item in bot.map_status.valid_mat(table['id']) \
+                           and table['table_type'] == target_table_type:
+                            flag = True
+                            if table['table_type'] == 9:
+                                if bot.bot_item >= 7:
+                                    bot.sell(table['id'])
+                                    break
+                            else:
                                 bot.sell(table['id'])
                                 break
-                        elif table['table_type'] >= 7:
-                            bot.sell(table['id'])
-                            break
-                        elif table['table_type'] >= 4:
-                            bot.sell(table['id'])
-                            break
-                        elif table['table_type'] != 9:
-                            bot.sell(table['id'])
-                            break
-                if not flag:
-                    # 到处都没得卖，如果
-                    flag1 = False
-                    if 3 < bot.bot_item <= 6:
-                        s_tables = list(filter(lambda x : x['table_type'] == 7, tables))
-                        if len(s_tables):
-                            bot.sell(random.sample(s_tables, 1)[0]['id'])
-                            flag1 = True
-                    elif bot.bot_item > 6:
-                        s_tables = list(filter(lambda x : x['table_type'] in [8, 9], tables))
-                        if len(s_tables):
-                            bot.sell(random.sample(s_tables, 1)[0]['id'])
-                            flag1 = True
-                    #if not flag1:
-                    #    bot.destroy()
-            else:            
-                flag = False
-                for pair in bot.paths:
-                    path, table_id = pair['path'], pair['table_id']
-                    if bot.bot_item in bot.map_status.valid_mat(table_id) and bot.bot_item != 0:
-                        if bot.map_status.table_type(table_id) == 9:
-                            continue
-                        bot.sell(table_id)
-                        flag = True
-                    if bot.bot_at == table_id:
-                        if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
-                            # 如果买了没地方卖的，就换一个东西买
-                            prod_type = tables[table_id]['table_type']
-                            if prod_type not in sellable_item:
-                                continue
-                            bot.buy(table_id)
-                if not flag:
-                    # 只有第一级物品可销毁
-                    #bot.destroy()
-                    pass
         else:
             # 如果有高级物品可以买，优先买高级物品
             # 优先买缺的物品（可卖的高级物品）
             # 不买现在机器人拿的多的
             # 如果买到可能销毁，不买
+            # 只有一个机器人负责买中间的
             flag = False
             if len(set(buyable_item) & set([4, 5, 6, 7])) > 0:
                 # 地图 1 生产优先级 5, 6, 4
-                # 无论低级物品是什么都直接买
+                # 无论低级物品是什么都直接买，指定一个机器人买中间
+                # 优先买短缺高级物品，最优先买7
+                index = desire_table_mat_list[0]['id']
+                for mat in desire_table_mat_list:
+                    if len(mat['status']) != 3:
+                        index = mat['id']
+                        break
+                # 判断7缺失的材料，优先令当前机器人去对应工作台卖
+                desire_mat = bot.map_status.valid_mat(index)
                 s_tables = sorted(tables, key=lambda x : x['table_type'])
                 s_tables.reverse()
                 for table in s_tables:
                     if bot_item_list.count(table['table_type']) >= 1:
                         continue
                     prod_type = table['table_type']
-                    if prod_type not in sellable_item:
-                        continue
                     if table['prod_status'] == 1 and table['table_type'] >= 7:
                         bot.buy(table['id'])
                         flag = True
                         break
-                    elif table['prod_status'] == 1 and table['table_type'] >= 4:
+                    if prod_type not in sellable_item or prod_type not in desire_mat:
+                        continue
+                    if table['prod_status'] == 1 and table['table_type'] >= 4:
                         bot.buy(table['id'])
                         flag = True
                         break
@@ -418,10 +414,22 @@ class MapAEngine(Engine):
                         flag = True
                         break
             if not flag:
+                # 先买最紧缺的基础材料
+                # 找到第一个材料不满的 7 号工作台的 id
+                index = desire_table_mat_list[0]['id']
+                for mat in desire_table_mat_list:
+                    if len(mat['status']) != 3:
+                        index = mat['id']
+                        break
+                # 判断缺失的材料，令当前机器人去买原材料
+                desire_mat = bot.map_status.valid_mat(index)
+                desire_raw = TARGET_MAT[random.sample(desire_mat, 1)[0] - 1]
+                target_table_type = random.sample(desire_raw, 1)[0]
                 flag1 = False
                 for pair in bot.paths:
                     path, table_id = pair['path'], pair['table_id']
-                    if bot_item_list.count(bot.map_status.tables[table_id]['table_type']) >= 2:
+                    prod_type = bot.map_status.tables[table_id]['table_type']
+                    if bot_item_list.count(prod_type) >= 2:
                         continue
                     if bot.bot_at == table_id:
                         continue
@@ -429,11 +437,13 @@ class MapAEngine(Engine):
                     # 如果地图上有高级物品，不买低级物品
                     # 优先买能卖的地方多的物品
                     # 不买卖不出去的
-                    if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
+                    # 优先买最短缺的
+                    if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0 \
+                       and prod_type == target_table_type:
                         prod_type = tables[table_id]['table_type']
                         if prod_type not in sellable_item:
                             continue
-                        if sellable_item.count(prod_type) <= 2:
+                        if sellable_item.count(prod_type) <= 1:
                             continue
                         bot.buy(table_id)
                         flag1 = True
@@ -456,12 +466,14 @@ class MapAEngine(Engine):
         sellable_item = []
         buyable_item = []
         bot_item_list = []
+        bot_target_list = []
         for table_id in range(len(tables)):
             valid_list = map_status.valid_mat(table_id)
             [sellable_item.append(x) for x in valid_list]
         [buyable_item.append(table['table_type']) if map_status.prod_status(table['id']) else None for table in tables]
         [bot_item_list.append(bot['item_type']) if bot['item_type'] != 0 else 0 for bot in map_status.bots]
         header_tasks = [bot_task.get_event() for bot_task in bot_tasks]
+        bot_target_list = [task.target_id if task is not None else -1 for task in header_tasks]
         # 如果要销毁，先进行全局决策
 
         # 如果要卖，先看是否有其它机器人要卖
@@ -471,7 +483,7 @@ class MapAEngine(Engine):
         # 优先买最紧缺的物品，填补物品
 
         # 根据势力图重规划
-        weights = [0.9, 0.9, 0.5, 0.2, 0.5]
+        weights = [0.2, 1.2, 0.6, 0.1, 0.2]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):
@@ -494,7 +506,7 @@ class MapAEngine(Engine):
                         event = pack_task(table_id, 0)
                         bot_tasks[bot_id].add_event(event)
                         break
-        # 解决冲突
+        # 解决冲突，不允许多于两个机器人去同一个低级工作台
         for i in range(len(header_tasks)):
             for j in range(i + 1, len(header_tasks)):
                 if header_tasks[i] is None or header_tasks[j] is None: continue
@@ -522,7 +534,7 @@ class MapAEngine(Engine):
                             # 如果可以买
                             if bot['item_type'] == 0 and table['prod_status'] == 1:
                                 prod_type = map_status.tables[table_id]['table_type']
-                                # Weired Bug
+                                if bot_target_list.count(prod_type) <= 1 and prod_type <= 3: continue
                                 if prod_type in sellable_item:
                                     event = pack_task(table_id, 1)
                                     bot_tasks[ad_bot].activate()
