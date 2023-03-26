@@ -287,14 +287,14 @@ class GeneralEngine(Engine):
                         if action == 1:
                             # 如果可以买
                             if bot['item_type'] == 0 and table['prod_status'] == 1:
-                                prod_type = table['table_type']
+                                prod_type = map_status.tables[table_id]['table_type']
                                 # Weired Bug
                                 if prod_type in sellable_item:
                                     event = pack_task(table_id, 1)
                                     bot_tasks[ad_bot].activate()
                                     bot_tasks[ad_bot].add_event(event)
                                     flag = True
-                                #logging.info(f'{table_id}, {ad_target}')
+                                    #logging.info(f'{table_id}, {ad_target}, {prod_type}, {sellable_item}')
                                     break
                         if action == 0:
                             # 如果可以卖

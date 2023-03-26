@@ -294,12 +294,21 @@ def avoid_collision(pos, vel, ang_vel,
                 else:
                     new_angular_velocities[i] += max_angular_velocity  * dt
                     new_angular_velocities[j] -= max_angular_velocity * dt
-            if dist < 1.2:
+            if dist < 1.5:
                 # 已经撞在一起
-                new_angular_velocities[i] = -3
-                new_angular_velocities[j] = 3
-                new_velocities[i] = -2
-                new_velocities[j] = 2
+                x_offset = np.abs(np.cos(np.arctan2(direction[1], direction[0])) * safe_distance)
+                delta_x = np.abs(pos[i][0] - x_offset)
+                new_velocities[i] *= -2
+                new_velocities[j] *= -2
+                if delta_x < x_offset:
+                    new_angular_velocities[i] = 1.2
+                    new_angular_velocities[j] = 1.2
+                else:
+                    new_angular_velocities[i] = 1.1
+                    new_angular_velocities[j] = 1.1
+                if np.linalg.norm(direction) < 0.5:
+                    # 几乎同向
+                    new_angular_velocities[i] *= -1
 
     new_velocities = [min(np.linalg.norm(v), max_speed) for v in new_velocities]
     return new_velocities, new_angular_velocities
@@ -325,14 +334,15 @@ class PID:
         return self.kp * error + self.ki * self.integral + self.kd * derivative
 
 class PID_Controller():
-    def __init__(self, bot_info: dict = None, paths: List = None, kp=4, ki=0.0007, kd=0.00005) -> None:
+    def __init__(self, bot_info: dict = None, paths: List = None, kp=[4, 3], ki=[0.0007, 0.0001], kd=[0.00005, 0.0002]) -> None:
         '''PID 控制器，输入一帧机器人位姿状态和当前帧行走路径集合，输出期望的线速度和角速度
         :param bot_info: 从地图数据中获取的机器人位姿
         :param paths: 机器人行走路径集合（有序点集）
         '''
         self.bot_info = bot_info
         self.paths = paths
-        self.pid = PID(kp, ki, kd)
+        self.v_pid = PID(kp[0], ki[0], kd[0])
+        self.w_pid = PID(kp[1], ki[1], kd[1])
         self.current_path_index = 0
 
     def distance_to_goal(self):
@@ -372,7 +382,8 @@ class PID_Controller():
     def refresh(self):
         '''重置pid控制器
         '''
-        self.pid.refresh()
+        self.v_pid.refresh()
+        self.w_pid.refresh()
 
     def handle(self, dt):
         '''获取该机器人前往 dest 在当前帧所需的 forwad 和 rotate
@@ -384,8 +395,8 @@ class PID_Controller():
             if self.current_path_index >= len(self.paths):
                 return None
 
-        linear_velocity = self.pid.update(distance_to_goal, dt)
-        angular_velocity = self.pid.update(angle_to_goal, dt)
+        linear_velocity = self.v_pid.update(distance_to_goal, dt)
+        angular_velocity = self.w_pid.update(angle_to_goal, dt)
         if linear_velocity > 6: linear_velocity = 6
         elif linear_velocity < -2: linear_velocity = -2
         if angular_velocity > np.pi: angular_velocity = np.pi
@@ -394,22 +405,22 @@ class PID_Controller():
         ''''''
         if angle_to_goal >= np.pi:
             angular_velocity = 3
-            linear_velocity = 1.5
+            linear_velocity = 2
         elif angle_to_goal <= -np.pi:
             angular_velocity = -3
-            linear_velocity = 1.5
+            linear_velocity = 2
         elif angle_to_goal >= np.pi / 2:
             angular_velocity = 3
-            linear_velocity = 1
+            linear_velocity = 1.8
         elif angle_to_goal <= -np.pi / 2:
+            angular_velocity = -3
+            linear_velocity = 1.8
+        elif angle_to_goal > np.pi / 3:
             angular_velocity = 3
-            linear_velocity = 1
-        elif angle_to_goal > np.pi/3 :
-            angular_velocity = 3
-            linear_velocity = 1.5
-        elif angle_to_goal < -np.pi/3 :
-            angular_velocity = 3
-            linear_velocity = 1.5
+            linear_velocity = 2
+        elif angle_to_goal < -np.pi /3:
+            angular_velocity = -3
+            linear_velocity = 2
 
         return linear_velocity, angular_velocity
 

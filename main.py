@@ -24,7 +24,7 @@ if __name__ == '__main__':
     # 初始化地图
     dataloader.init()
     finish()
-    controller = [PID_Controller(kp=4.5, ki=0.001, kd=0.00005) for _ in range(4)] #调用机器人控制类
+    controller = [PID_Controller(kp=[4, 3.9], ki=[0.0007, 0.005], kd=[0.0005, 0.001]) for _ in range(4)] #调用机器人控制类
     #finder = Dijkstra([0, 50], [0, 50], 1.25, 0.45)
     finder = SimpleFinder()
     engines = [
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         vel, ang_vel = np.zeros(4), np.zeros(4)
         # 2023/03/22 feature: 完成一个机器人的 PID 控制
         # 2023/03/22 future: 重构代码
-        if dataloader.frame_id % 20 == 0:
+        if dataloader.frame_id % 10 == 0:
             scheduler.glob_plan(dataloader)
     
         # 四个机器人分别执行任务和控制
@@ -97,11 +97,10 @@ if __name__ == '__main__':
                 continue
 
             vel[i], ang_vel[i] = res[0], res[1]
-            if vel[i] <= 0.1: vel[i] = -2
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.1, 2)
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.35, 5.5)
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))
