@@ -4,7 +4,7 @@ from components.finder import Dijkstra, SimpleFinder
 from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
 from components.controller import PID_Controller, glob_check, avoid_collision
-from components.engine import MapAEngine, AFuckingTestingEngine, GeneralEngine, MapBEngine, MapCEngine, MapDEngine
+from components.engine import MapAEngine, GeneralEngine, MapBEngine, MapCEngine, MapDEngine
 import logging
 import numpy as np
 
@@ -76,6 +76,10 @@ if __name__ == '__main__':
                 bot_status[i] = 1
                 # 执行任务
                 task = scheduler.activate(i)
+                if dataloader.frame_id >= 8800 and task.action == 1: continue
+                if dataloader.frame_id >= 8500 and task.action == 1 and dataloader.tables[task.target_id]['table_type'] in [1, 2, 3]:
+                    continue
+                    # 不买了
                 sys.stdout.write('%s %d\n' % (task.action_list[str(task.action)], i))
             elif bot_status[i] == 1:
                 # 进行下一次规划，重置控制器

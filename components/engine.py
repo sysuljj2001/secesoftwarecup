@@ -228,6 +228,13 @@ class GeneralEngine(Engine):
         [buyable_item.append(table['table_type']) if map_status.prod_status(table['id']) else None for table in tables]
         [bot_item_list.append(bot['item_type']) if bot['item_type'] != 0 else 0 for bot in map_status.bots]
         header_tasks = [bot_task.get_event() for bot_task in bot_tasks]
+        if map_status.frame_id >= 8800:
+            for bot in map_status.bots:
+                for i in range(len(bot_tasks)):
+                    event = bot_tasks[bot['id']].task_queue[i]
+                    if event.action == 1:
+                        del bot_tasks[bot['id']].task_queue[i]
+        
         # 如果要销毁，先进行全局决策
 
         # 如果要卖，先看是否有其它机器人要卖
@@ -576,22 +583,42 @@ class MapBEngine(Engine):
                 flag  = False
                 s_tables = sorted(tables, key=lambda x : len(x['mat_status']))
                 s_tables.reverse()
-                for table in s_tables:
-                    if bot.bot_item in bot.map_status.valid_mat(table['id']):
+                if not flag:
+                    ss_tables = list(filter(lambda x : x['table_type'] == 4, s_tables))
+                    for table in ss_tables:
+                        if bot.bot_item in bot.map_status.valid_mat(table['id']):
+                            bot.sell(table['id'])
+                            flag = True
+                            break
+                ss_tables = list(filter(lambda x : x['table_type'] == 6, s_tables))
+                for table in ss_tables:
+                    if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [0, 1]:
+                        bot.sell(table['id'])
                         flag = True
-                        if table['table_type'] == 9:
-                            if bot.bot_item >= 7:
+                        break
+                    ss_tables = list(filter(lambda x : x['table_type'] == 5, s_tables))
+                for table in ss_tables:
+                    if bot.bot_item in bot.map_status.valid_mat(table['id']) and bot.bot_id in [2, 3]:
+                        bot.sell(table['id'])
+                        flag = True
+                        break
+                if not flag:
+                    for table in s_tables:
+                        if bot.bot_item in bot.map_status.valid_mat(table['id']):
+                            flag = True
+                            if table['table_type'] == 9:
+                                if bot.bot_item >= 7:
+                                    bot.sell(table['id'])
+                                    break
+                            elif table['table_type'] >= 7:
                                 bot.sell(table['id'])
                                 break
-                        elif table['table_type'] >= 7:
-                            bot.sell(table['id'])
-                            break
-                        elif table['table_type'] >= 4:
-                            bot.sell(table['id'])
-                            break
-                        elif table['table_type'] != 9:
-                            bot.sell(table['id'])
-                            break
+                            elif table['table_type'] >= 4:
+                                bot.sell(table['id'])
+                                break
+                            elif table['table_type'] != 9:
+                                bot.sell(table['id'])
+                                break
                 if not flag:
                     # 到处都没得卖，如果
                     flag1 = False
@@ -708,7 +735,7 @@ class MapBEngine(Engine):
         # 优先买最紧缺的物品，填补物品
 
         # 根据势力图重规划
-        weights = [0.9, 0.9, 0.5, 0.2, 0.5]
+        weights = [0.9, 1.2, 0.6, 0.2, 0.9]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):
@@ -811,7 +838,7 @@ class MapCEngine(Engine):
             flag = False
             for pair in bot.paths:
                 path, table_id = pair['path'], pair['table_id']
-                if bot.bot_at == table_id or table_id in self.forbidden_table:
+                if table_id in self.forbidden_table:
                     continue
                 if tables[table_id]['prod_status'] == 1 and bot.bot_item == 0:
                     bot.buy(table_id)
