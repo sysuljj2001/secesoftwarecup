@@ -729,7 +729,7 @@ class MapBEngine(Engine):
         # 优先买最紧缺的物品，填补物品
 
         # 根据势力图重规划
-        weights = [0.9, 1.2, 0.6, 0.2, 0.9]
+        weights = [0.9, 1.5, 1.2, 0.7, 0.9]
         force_map = value_map.get_all(weights)
         #logging.info(force_map)
         for bot_id in range(len(map_status.bots)):
