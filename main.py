@@ -3,7 +3,7 @@ import sys
 from components.finder import Dijkstra, SimpleFinder
 from components.scheduler import Scheduler, SimpleScheduler, StateMachineScheduler
 from components.preprocess import DataLoader
-from components.controller import PID_Controller, RVO_Contorller, glob_check, avoid_collision
+from components.controller import PID_Controller, glob_check, avoid_collision
 from components.engine import MapAEngine, AFuckingTestingEngine, GeneralEngine, MapBEngine, MapCEngine, MapDEngine
 import logging
 import numpy as np
@@ -30,6 +30,9 @@ if __name__ == '__main__':
         [[4, 3.5], [0.001, 0.1], [0.007, 0.5]],
         [[4, 3.5], [0.0007, 0.01], [0.007, 0.001]],
         [[4, 3.5], [0.0007, 0.01], [0.007, 0.001]],
+    ]
+    coll_param = [
+        [0.1, 1.8], [0.1, 1.8], [0.1, 1.8], [0.1, 1.8]
     ]
     index = K.index(dataloader.table_num)
 
@@ -112,28 +115,8 @@ if __name__ == '__main__':
         # 规避碰撞
         pos = [np.array(bot['coord']) for bot in bot_infos]
         ori = np.array([bot['p'] for bot in bot_infos])
-        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, 0.1, 1.8)
+        vel, ang_vel = avoid_collision(pos, vel, ang_vel, ori, coll_param[index][0], coll_param[index][1])
         for i in range(4):
             sys.stdout.write('forward %d %d\n' % (i, vel[i]))
             sys.stdout.write('rotate %d %f\n' % (i, ang_vel[i]))
         finish()
-
-
-'''
-1 199346
-9
-1 43.75 49.25 0 0 1
-2 45.75 49.25 0 0 1
-3 47.75 49.25 0 0 1
-4 43.75 47.25 -1 0 0
-5 45.75 47.25 168 0 0
-6 47.75 47.25 -1 0 0
-7 44.75 45.25 -1 0 0
-8 46.75 45.25 -1 0 0
-9 46.25 42.25 -1 0 0
-5 3 0.9657950401 1 0 0 0 -0.3755806088 47.5760498 47.40252686
--1 0 0 0 0 0 0 -0.006108176429 43.75140762 48.23157501
--1 0 0 0 0 0 0 0 3.25 2.25
--1 0 0 0 0 0 0 0 45.75 1.75
-OK
-'''
